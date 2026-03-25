@@ -1,0 +1,40 @@
+# GeoTrade — Python Requirements
+# Install with: pip install -r requirements.txt
+#
+# Windows note: if torch install is slow, install it separately first:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+# ── Data & ML ─────────────────────────────────────────────────
+pandas==2.1.4
+numpy==1.26.3
+scikit-learn==1.4.0
+lightgbm==4.2.0
+matplotlib==3.8.2
+seaborn==0.13.1
+
+# ── NLP ───────────────────────────────────────────────────────
+transformers==4.37.2
+torch==2.2.0
+sentencepiece>=0.2.0
+
+# ── Market data ───────────────────────────────────────────────
+yfinance==0.2.36
+
+# ── Database  (srv = Atlas SRV connection string support) ─────
+pymongo[srv]==4.6.1
+
+# ── API ───────────────────────────────────────────────────────
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-dotenv==1.0.0
+pydantic==2.5.3
+
+# ── Ingestion ─────────────────────────────────────────────────
+requests==2.31.0
+feedparser==6.0.11
+beautifulsoup4==4.12.3
+lxml==5.1.0
+
+# ── Utilities ─────────────────────────────────────────────────
+tqdm==4.66.1
+python-dateutil==2.8.2

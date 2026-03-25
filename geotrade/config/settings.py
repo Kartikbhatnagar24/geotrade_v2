@@ -1,0 +1,77 @@
+"""
+config/settings.py
+──────────────────
+Single place where ALL environment variables are read and validated.
+Every other module imports from here — never from os.getenv directly.
+
+Usage:
+    from config.settings import settings
+    print(settings.MONGODB_URI)
+"""
+
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load .env from project root (works regardless of CWD)
+_ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(_ROOT / ".env")
+
+
+class Settings:
+    # ── MongoDB ───────────────────────────────────────────────
+    MONGODB_URI: str  = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
+    MONGODB_DB:  str  = os.getenv("MONGODB_DB",  "geotrade")
+
+    # ── Collections ───────────────────────────────────────────
+    COL_RAW_ARTICLES:    str = "raw_articles"
+    COL_PROCESSED_EVENTS: str = "processed_events"
+    COL_DAILY_SIGNALS:   str = "daily_signals"
+
+    # ── News ingestion ────────────────────────────────────────
+    NEWS_API_KEY:       str = os.getenv("NEWS_API_KEY", "")
+    INGESTION_DAYS_BACK: int = int(os.getenv("INGESTION_DAYS_BACK", "30"))
+    MAX_ARTICLES:       int = int(os.getenv("MAX_ARTICLES_PER_RUN", "500"))
+
+    # ── NLP ───────────────────────────────────────────────────
+    NLP_BATCH_SIZE:     int = int(os.getenv("NLP_BATCH_SIZE", "8"))
+    EVENT_LABELS:       list = ["conflict", "diplomacy", "sanctions", "elections", "trade"]
+
+    # ── Tension scoring ───────────────────────────────────────
+    TENSION_ALPHA:      float = float(os.getenv("TENSION_ALPHA", "0.6"))
+    TENSION_BETA:       float = float(os.getenv("TENSION_BETA",  "0.4"))
+
+    # ── Paths ─────────────────────────────────────────────────
+    ROOT_DIR:       Path = _ROOT
+    DATA_RAW:       Path = _ROOT / "data" / "raw"
+    DATA_PROCESSED: Path = _ROOT / "data" / "processed"
+    DATA_PLOTS:     Path = _ROOT / "data" / "plots"
+
+    # ── API ───────────────────────────────────────────────────
+    API_HOST:       str = os.getenv("API_HOST", "0.0.0.0")
+    API_PORT:       int = int(os.getenv("API_PORT", "8000"))
+
+
+settings = Settings()
+
+
+def print_config():
+    """Pretty-print current config (masks secrets)."""
+    uri = settings.MONGODB_URI
+    masked_uri = uri if "localhost" in uri else uri[:20] + "***"
+    print(f"""
+  GeoTrade Config
+  ───────────────────────────────────
+  MongoDB URI   : {masked_uri}
+  Database      : {settings.MONGODB_DB}
+  NewsAPI key   : {"set ✓" if settings.NEWS_API_KEY else "not set (RSS fallback)"}
+  Days back     : {settings.INGESTION_DAYS_BACK}
+  Max articles  : {settings.MAX_ARTICLES}
+  NLP batch     : {settings.NLP_BATCH_SIZE}
+  Tension α/β   : {settings.TENSION_ALPHA} / {settings.TENSION_BETA}
+  API           : {settings.API_HOST}:{settings.API_PORT}
+  ───────────────────────────────────""")
+
+
+if __name__ == "__main__":
+    print_config()
