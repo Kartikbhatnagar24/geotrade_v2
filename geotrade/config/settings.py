@@ -30,6 +30,7 @@ class Settings:
 
     # ── News ingestion ────────────────────────────────────────
     NEWS_API_KEY:       str = os.getenv("NEWS_API_KEY", "")
+    GUARDIAN_API_KEY:   str = os.getenv("GUARDIAN_API_KEY", "")
     INGESTION_DAYS_BACK: int = int(os.getenv("INGESTION_DAYS_BACK", "30"))
     MAX_ARTICLES:       int = int(os.getenv("MAX_ARTICLES_PER_RUN", "500"))
 
@@ -46,6 +47,19 @@ class Settings:
     DATA_RAW:       Path = _ROOT / "data" / "raw"
     DATA_PROCESSED: Path = _ROOT / "data" / "processed"
     DATA_PLOTS:     Path = _ROOT / "data" / "plots"
+
+    # ── Gemini AI ─────────────────────────────────────────────
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+
+    # ── Forecast / Briefing collections ───────────────────────
+    COL_TENSION_FORECASTS: str = "tension_forecasts"
+    COL_LLM_BRIEFINGS:     str = "llm_briefings"
+
+    # ── Forecast settings ─────────────────────────────────────
+    FORECAST_HORIZON_DAYS:  int   = 7     # how many days ahead to predict
+    FORECAST_HISTORY_DAYS:  int   = 30    # how many days of history to use
+    FORECAST_CACHE_MINUTES: int   = 60    # re-compute after N minutes
+    BRIEFING_CACHE_HOURS:   int   = 24    # re-call Gemini after N hours
 
     # ── API ───────────────────────────────────────────────────
     API_HOST:       str = os.getenv("API_HOST", "0.0.0.0")
@@ -65,10 +79,12 @@ def print_config():
   MongoDB URI   : {masked_uri}
   Database      : {settings.MONGODB_DB}
   NewsAPI key   : {"set ✓" if settings.NEWS_API_KEY else "not set (RSS fallback)"}
+  Gemini key    : {"set ✓" if settings.GEMINI_API_KEY else "not set (briefings disabled)"}
   Days back     : {settings.INGESTION_DAYS_BACK}
   Max articles  : {settings.MAX_ARTICLES}
   NLP batch     : {settings.NLP_BATCH_SIZE}
   Tension α/β   : {settings.TENSION_ALPHA} / {settings.TENSION_BETA}
+  Forecast      : {settings.FORECAST_HORIZON_DAYS}d ahead, {settings.FORECAST_HISTORY_DAYS}d history
   API           : {settings.API_HOST}:{settings.API_PORT}
   ───────────────────────────────────""")
 

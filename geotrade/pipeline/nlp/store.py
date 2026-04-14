@@ -27,23 +27,33 @@ def fetch_unprocessed(limit: int = 1000) -> list[dict]:
 
 def save_event(article: dict, event_label: str, event_score: float,
                sentiment_label: str, sentiment_score: float,
-               neg_sentiment: float, countries: list[dict]):
-    """Upsert processed event and mark source article as done."""
+               neg_sentiment: float, countries: list[dict],
+               intensity: float = 0.0):
+    """
+    Upsert processed event and mark source article as done.
+
+    New fields vs v1:
+      - intensity_score : keyword-based severity weight (0.0–1.0)
+      - has_country_match : False when no countries were extracted
+        (these events are stored but excluded from scoring)
+    """
     db = get_db()
     doc = {
-        "article_id":        str(article["_id"]),
-        "title":             article.get("title", ""),
-        "description":       article.get("description", ""),
-        "url":               article.get("url", ""),
-        "source":            article.get("source", ""),
-        "published_at":      article.get("published_at", ""),
-        "event_label":       event_label,
-        "event_score":       event_score,
-        "sentiment_label":   sentiment_label,
-        "sentiment_score":   sentiment_score,
+        "article_id":          str(article["_id"]),
+        "title":               article.get("title", ""),
+        "description":         article.get("description", ""),
+        "url":                 article.get("url", ""),
+        "source":              article.get("source", ""),
+        "published_at":        article.get("published_at", ""),
+        "event_label":         event_label,
+        "event_score":         event_score,
+        "sentiment_label":     sentiment_label,
+        "sentiment_score":     sentiment_score,
         "neg_sentiment_score": neg_sentiment,
-        "countries":         countries,
-        "processed_at":      datetime.now(timezone.utc).isoformat(),
+        "intensity_score":     intensity,
+        "countries":           countries,
+        "has_country_match":   len(countries) > 0,
+        "processed_at":        datetime.now(timezone.utc).isoformat(),
     }
     db[settings.COL_PROCESSED_EVENTS].update_one(
         {"article_id": str(article["_id"])},

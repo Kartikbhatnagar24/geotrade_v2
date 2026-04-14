@@ -1,8 +1,15 @@
 """
 scripts/step1_ingest.py — News Ingestion
 =========================================
-Fetches geopolitical news from NewsAPI / RSS / sample data
+Fetches geopolitical news from NewsAPI / GDELT / RSS / Guardian / sample data
 and stores deduplicated articles in MongoDB: raw_articles
+
+Sources (in order of richness):
+  1. NewsAPI      — requires NEWS_API_KEY   (most articles, paginated)
+  2. GDELT        — free, no key, 90-day    (broadest coverage)
+  3. RSS feeds    — 16 international feeds  (near real-time)
+  4. Guardian     — requires GUARDIAN_API_KEY (high quality, full body text)
+  5. Sample data  — bundled offline fallback
 
 Run (from project root):
     python scripts/step1_ingest.py
@@ -16,7 +23,10 @@ from datetime import datetime, timedelta, timezone
 
 from config.settings import settings
 from pipeline.utils.logger import StepLogger
-from pipeline.ingestion.sources import fetch_newsapi, fetch_gdelt, fetch_rss_feeds, fetch_sample_data
+from pipeline.ingestion.sources import (
+    fetch_newsapi, fetch_gdelt, fetch_rss_feeds,
+    fetch_guardian, fetch_sample_data,
+)
 from pipeline.ingestion.store import deduplicate, insert_articles, count_total
 
 log = StepLogger("Step 1 — News Ingestion")
@@ -45,13 +55,23 @@ def main():
     all_articles.extend(arts)
     log.success(f"{len(arts)} articles from GDELT")
 
-    # ── Source 2: RSS feeds ────────────────────────────────────
-    log.section("RSS Feeds")
+    # ── Source 3: RSS feeds (16 international sources) ─────────
+    log.section("RSS Feeds (16 sources)")
     arts = fetch_rss_feeds()
     all_articles.extend(arts)
     log.success(f"{len(arts)} articles from RSS feeds")
 
-    # ── Source 3: Sample data ──────────────────────────────────
+    # ── Source 4: Guardian API ─────────────────────────────────
+    log.section("Guardian API")
+    guardian_key = getattr(settings, "GUARDIAN_API_KEY", "")
+    if guardian_key:
+        arts = fetch_guardian(from_date)
+        all_articles.extend(arts)
+        log.success(f"{len(arts)} articles from Guardian (with full body text)")
+    else:
+        log.warn("GUARDIAN_API_KEY not set — skipping (free key at open-platform.theguardian.com)")
+
+    # ── Source 5: Sample data ──────────────────────────────────
     log.section("Sample Dataset")
     arts = fetch_sample_data()
     all_articles.extend(arts)

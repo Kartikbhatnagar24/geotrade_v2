@@ -17,7 +17,7 @@ from tqdm import tqdm
 
 from pipeline.utils.logger import StepLogger
 from pipeline.nlp.classify import classify_event, analyze_sentiment, neg_score
-from pipeline.nlp.ner import extract_countries
+from pipeline.nlp.ner import extract_countries, intensity_score
 from pipeline.nlp.store import (
     ensure_indexes, fetch_unprocessed, save_event, label_distribution,
 )
@@ -49,12 +49,14 @@ def main():
             sent_label,   sent_score     = analyze_sentiment(text)
             negativity                   = neg_score(sent_label, sent_score)
             countries                    = extract_countries(text)
+            intensity                    = intensity_score(text)
 
             save_event(
                 article,
                 event_label, event_score,
                 sent_label,  sent_score,
                 negativity,  countries,
+                intensity,
             )
             processed += 1
 

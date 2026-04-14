@@ -23,6 +23,8 @@ from backend.core.database import get_db, ping
 from backend.routes.events import router as events_router
 from backend.routes.signals import router as signals_router
 from backend.routes.trading import router as trading_router
+from backend.routes.forecast import router as forecast_router
+from backend.routes.briefing import router as briefing_router
 from config.settings import settings
 
 # ── App ───────────────────────────────────────────────────────
@@ -48,6 +50,8 @@ app.add_middleware(
 app.include_router(events_router)
 app.include_router(signals_router)
 app.include_router(trading_router)
+app.include_router(forecast_router)
+app.include_router(briefing_router)
 
 
 # ── Health / system routes ────────────────────────────────────
