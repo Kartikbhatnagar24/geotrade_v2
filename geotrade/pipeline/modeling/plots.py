@@ -85,9 +85,9 @@ def plot_tension_vs_volatility(merged: pd.DataFrame) -> str:
 
     # Volatility label
     ax = axes[2]
-    colors = [C["red"] if v == 1 else C["green"] for v in merged["volatility_increase"]]
-    ax.scatter(dates, merged["volatility_increase"], c=colors, s=18, alpha=0.55)
-    ax.set_ylabel("Vol. Increase\n(1 = Yes)")
+    colors = [C["red"] if v == 1 else C["green"] for v in merged["vol_up_3d"]]
+    ax.scatter(dates, merged["vol_up_3d"], c=colors, s=18, alpha=0.55)
+    ax.set_ylabel("VIX Up in 3d\n(1 = Yes)")
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%b %Y"))
     fig.autofmt_xdate(rotation=20)
     ax.grid(True)

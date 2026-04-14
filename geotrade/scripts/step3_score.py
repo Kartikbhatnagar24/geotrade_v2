@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config.settings import settings
 from pipeline.utils.db import get_db
 from pipeline.utils.logger import StepLogger
-from pipeline.scoring.scorer import compute_signals
+from pipeline.scoring.scorer import compute_signals, enrich_with_velocity
 from pipeline.scoring.store import upsert_signals, export_csv, tension_stats
 
 log = StepLogger("Step 3 — Tension Scoring")
@@ -35,6 +35,7 @@ def main():
     log.info(f"Loaded {len(events)} processed events")
 
     signals = compute_signals(events)
+    signals = enrich_with_velocity(signals)   # adds tension_velocity_7d + tension_regime
     log.info(f"Computed {len(signals)} (date × country) signals")
 
     count   = upsert_signals(signals)
