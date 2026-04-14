@@ -1,7 +1,7 @@
 // frontend/lib/api.ts
 // All backend API calls. Import from here — never fetch() inline in components.
 
-import type { GeoEvent, DailySignal, StatsData, TradingData } from "@/types";
+import type { GeoEvent, DailySignal, StatsData, TradingData, ForecastData, BriefingData } from "@/types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -42,4 +42,12 @@ export async function fetchTradingSignals(iso: string): Promise<TradingData | nu
 export async function fetchCountrySignals(iso: string): Promise<DailySignal[]> {
   const data = await get<{ signals: DailySignal[] }>(`/events/${iso}`);
   return (data as any)?.signals ?? [];
+}
+
+export async function fetchForecast(iso: string): Promise<ForecastData | null> {
+  return get<ForecastData>(`/forecast/${iso}`);
+}
+
+export async function fetchBriefing(iso: string): Promise<BriefingData | null> {
+  return get<BriefingData>(`/briefing/${iso}`);
 }

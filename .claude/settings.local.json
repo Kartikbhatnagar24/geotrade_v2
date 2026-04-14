@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs ls:*)",
+      "Bash(npx tsc:*)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(cp \"/c/Users/karti/Downloads/geotrade_v2/.claude/worktrees/cranky-hugle/geotrade/frontend/components/panels/CountryTradingPanel.tsx\" \"/c/Users/karti/Downloads/geotrade_v2/geotrade/frontend/components/panels/CountryTradingPanel.tsx\")",
+      "Bash(cp \"/c/Users/karti/Downloads/geotrade_v2/.claude/worktrees/cranky-hugle/geotrade/frontend/types/index.ts\" \"/c/Users/karti/Downloads/geotrade_v2/geotrade/frontend/types/index.ts\")",
+      "Bash(ls -la /c/Users/karti/Downloads/geotrade_v2/geotrade/frontend/*.config.* /c/Users/karti/Downloads/geotrade_v2/geotrade/frontend/tailwind.config.*)"
+    ]
+  }
+}

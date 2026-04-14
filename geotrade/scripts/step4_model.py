@@ -22,7 +22,7 @@ from pipeline.modeling.features import (
     load_tension_df, download_market_df, synthetic_market_df,
     build_merged, split_features,
 )
-from pipeline.modeling.train import train_random_forest, train_lightgbm
+from pipeline.modeling.train import train_random_forest, train_lightgbm, save_best_model
 from pipeline.modeling.plots import (
     plot_tension_vs_volatility, plot_feature_importance,
     plot_roc_curves, plot_model_comparison,
@@ -86,6 +86,11 @@ def main():
     plots.append(plot_model_comparison(results))
     for p in plots:
         log.info(f"Saved → {p}")
+
+    # ── 6. Save best model ─────────────────────────────────────
+    log.section("Saving best model")
+    saved_path = save_best_model(results)
+    log.success(f"Best model persisted → {saved_path}")
 
     # ── Summary ────────────────────────────────────────────────
     log.footer({
