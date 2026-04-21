@@ -134,16 +134,16 @@ NEWS_API_KEY=your_key_here
 ### 5 — Run the pipeline
 
 ```cmd
-python scripts/run_all.py
+python ml/scripts/run_all.py
 ```
 
 Or step-by-step:
 
 ```cmd
-python scripts/step1_ingest.py
-python scripts/step2_nlp.py
-python scripts/step3_score.py
-python scripts/step4_model.py
+python ml/scripts/step1_ingest.py
+python ml/scripts/step2_nlp.py
+python ml/scripts/step3_score.py
+python ml/scripts/step4_model.py
 ```
 
 Step 2 downloads ~1 GB of HuggingFace model weights on first run.
@@ -211,6 +211,6 @@ Thresholds:
 ## Thesis Notes
 
 - Models are intentionally simple (thesis-grade, not production).
-- NER is keyword-based — extend `pipeline/nlp/ner.py` to add spaCy for higher accuracy.
+- NER is keyword-based — extend `ml/pipeline/nlp/ner.py` to add spaCy for higher accuracy.
 - The globe falls back to bundled demo data when the API is offline — useful for presentations.
 - All plots are saved to `data/plots/` as high-DPI PNGs suitable for inclusion in a thesis PDF.

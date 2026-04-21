@@ -15,9 +15,10 @@ the cache for all known countries at once.
 import sys
 from pathlib import Path
 
-# Ensure project root is on sys.path
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
+_ML = Path(__file__).resolve().parent.parent        # geotrade/ml
+_ROOT = _ML.parent                                   # geotrade
+sys.path.insert(0, str(_ROOT))   # for config.* and backend.*
+sys.path.insert(0, str(_ML))     # for pipeline.*
 
 from backend.core.database import get_db
 from config.settings import settings

@@ -3,11 +3,11 @@ scripts/run_all.py — Full Pipeline Runner
 ==========================================
 Runs all 5 steps in sequence. Stops on first failure.
 
-Usage:
-    python scripts/run_all.py              # all 5 steps
-    python scripts/run_all.py --from 3     # resume from step 3
-    python scripts/run_all.py --only 1 2   # run only specific steps
-    python scripts/run_all.py --skip 4     # skip step 4 (modeling)
+Usage (from geotrade/ root):
+    python ml/scripts/run_all.py              # all 5 steps
+    python ml/scripts/run_all.py --from 3     # resume from step 3
+    python ml/scripts/run_all.py --only 1 2   # run only specific steps
+    python ml/scripts/run_all.py --skip 4     # skip step 4 (modeling)
 
 Step overview:
     1  News Ingestion     — fetch articles from GDELT, RSS, NewsAPI, Guardian
@@ -29,14 +29,14 @@ import sys
 import time
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent  # geotrade root
 
 STEPS = {
-    1: "scripts/step1_ingest.py",
-    2: "scripts/step2_nlp.py",
-    3: "scripts/step3_score.py",
-    4: "scripts/step4_model.py",
-    5: "scripts/step5_forecast.py",
+    1: "ml/scripts/step1_ingest.py",
+    2: "ml/scripts/step2_nlp.py",
+    3: "ml/scripts/step3_score.py",
+    4: "ml/scripts/step4_model.py",
+    5: "ml/scripts/step5_forecast.py",
 }
 
 NAMES = {
@@ -103,7 +103,7 @@ def main():
         if not ok:
             print(f"\n  Pipeline stopped at step {step}.")
             print(f"  Fix the error above, then resume with:")
-            print(f"    python scripts/run_all.py --from {step}")
+            print(f"    python ml/scripts/run_all.py --from {step}")
             break
 
     total = time.time() - total_start
@@ -126,7 +126,7 @@ def main():
         failed = [s for s, ok in results.items() if not ok]
         print(f"\n  Failed steps: {failed}")
         print(f"  Tip: Step 4 (modeling) can be skipped safely:")
-        print(f"    python scripts/run_all.py --skip 4\n")
+        print(f"    python ml/scripts/run_all.py --skip 4\n")
 
 
 if __name__ == "__main__":

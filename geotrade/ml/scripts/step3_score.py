@@ -11,7 +11,10 @@ Run (from project root):
 
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+_ML = Path(__file__).resolve().parent.parent        # geotrade/ml
+_ROOT = _ML.parent                                   # geotrade
+sys.path.insert(0, str(_ROOT))   # for config.*
+sys.path.insert(0, str(_ML))     # for pipeline.*
 
 from config.settings import settings
 from pipeline.utils.db import get_db

@@ -13,8 +13,9 @@ API docs:
 import sys
 from pathlib import Path
 
-# Ensure project root is on sys.path so config/ resolves correctly
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+_ROOT = Path(__file__).resolve().parent.parent       # geotrade root
+sys.path.insert(0, str(_ROOT))                       # for config.* and backend.*
+sys.path.insert(0, str(_ROOT / "ml"))                # for pipeline.*
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
