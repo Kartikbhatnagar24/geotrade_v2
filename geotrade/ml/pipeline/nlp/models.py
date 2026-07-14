@@ -5,8 +5,7 @@ Loads HuggingFace pipelines once and caches them.
 First run downloads ~1 GB of model weights.
 
 torch is imported lazily so this module can be safely imported
-even when torch is not installed (e.g. during step4_model.py which
-only needs the keyword classifier, not the transformers pipeline).
+even when torch is not installed.
 """
 
 from transformers import pipeline as hf_pipeline

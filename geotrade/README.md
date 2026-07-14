@@ -34,7 +34,7 @@ geotrade/
 │   └── modeling/
 │       ├── features.py       ← load signals + yfinance, build feature matrix
 │       ├── train.py          ← RandomForest + LightGBM trainers
-│       └── plots.py          ← 4 thesis-ready dark-theme charts
+│       └── predictor.py      ← loads boosted ensemble (LGBM/XGB/CatBoost)
 │
 ├── scripts/                  ← run these in order
 │   ├── step1_ingest.py
@@ -77,13 +77,10 @@ geotrade/
 │   └── styles/
 │       └── globals.css       ← Tailwind base + glass-panel + tooltip styles
 │
-├── data/
-│   ├── raw/                  ← reserved for downloaded datasets
-│   ├── processed/            ← daily_signals.csv, merged_dataset.csv
-│   └── plots/                ← PNG charts from step 4
-│
-└── notebooks/
-    └── analysis.ipynb        ← exploratory analysis, correlation plots
+└── data/
+    ├── raw/                  ← reserved for downloaded datasets
+    ├── processed/            ← daily_signals.csv, merged_dataset.csv
+    └── models/               ← saved best_model.joblib + ensemble artifacts
 ```
 
 ---

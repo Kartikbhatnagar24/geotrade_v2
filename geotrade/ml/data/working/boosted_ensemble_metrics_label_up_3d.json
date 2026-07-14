@@ -1,0 +1,403 @@
+{
+  "lightgbm": {
+    "best_iteration": 1,
+    "train": {
+      "rows": 11736,
+      "accuracy": 0.546779,
+      "precision": 0.546779,
+      "recall": 1.0,
+      "f1": 0.706991,
+      "auc": 0.714836,
+      "logloss": 0.681451,
+      "brier": 0.244186,
+      "positive_rate": 0.546779
+    },
+    "validation": {
+      "rows": 2520,
+      "accuracy": 0.55,
+      "precision": 0.55,
+      "recall": 1.0,
+      "f1": 0.709677,
+      "auc": 0.513751,
+      "logloss": 0.688509,
+      "brier": 0.247685,
+      "positive_rate": 0.55
+    },
+    "test": {
+      "rows": 2520,
+      "accuracy": 0.645238,
+      "precision": 0.645238,
+      "recall": 1.0,
+      "f1": 0.78437,
+      "auc": 0.467478,
+      "logloss": 0.670828,
+      "brier": 0.238875,
+      "positive_rate": 0.645238
+    },
+    "top_feature_importances": [
+      {
+        "feature": "vix_close",
+        "importance": 7.0
+      },
+      {
+        "feature": "vix_change_1d",
+        "importance": 5.0
+      },
+      {
+        "feature": "breadth_neg_tone_count",
+        "importance": 5.0
+      },
+      {
+        "feature": "breadth_neg_tone_frac",
+        "importance": 3.0
+      },
+      {
+        "feature": "theme_mentions_3d_vs_14d",
+        "importance": 2.0
+      },
+      {
+        "feature": "theme_density_14d",
+        "importance": 2.0
+      },
+      {
+        "feature": "market_prev_return_1d",
+        "importance": 2.0
+      },
+      {
+        "feature": "organization_mentions_3d_vs_14d",
+        "importance": 1.0
+      },
+      {
+        "feature": "market_momentum_5d",
+        "importance": 1.0
+      },
+      {
+        "feature": "breadth_high_news_count",
+        "importance": 1.0
+      },
+      {
+        "feature": "breadth_countries_active",
+        "importance": 1.0
+      },
+      {
+        "feature": "document_count",
+        "importance": 0.0
+      },
+      {
+        "feature": "theme_mentions",
+        "importance": 0.0
+      },
+      {
+        "feature": "theme_unique",
+        "importance": 0.0
+      },
+      {
+        "feature": "person_mentions",
+        "importance": 0.0
+      },
+      {
+        "feature": "organization_mentions",
+        "importance": 0.0
+      },
+      {
+        "feature": "cameo_event_mentions",
+        "importance": 0.0
+      },
+      {
+        "feature": "avg_tone_mean",
+        "importance": 0.0
+      },
+      {
+        "feature": "document_count_sum_14d",
+        "importance": 0.0
+      },
+      {
+        "feature": "numarts_sum_sum_14d",
+        "importance": 0.0
+      }
+    ]
+  },
+  "xgboost": {
+    "best_iteration": 55,
+    "train": {
+      "rows": 11736,
+      "accuracy": 0.78502,
+      "precision": 0.750064,
+      "recall": 0.910083,
+      "f1": 0.822361,
+      "auc": 0.880968,
+      "logloss": 0.544429,
+      "brier": 0.180848,
+      "positive_rate": 0.546779
+    },
+    "validation": {
+      "rows": 2520,
+      "accuracy": 0.52619,
+      "precision": 0.550314,
+      "recall": 0.757576,
+      "f1": 0.637523,
+      "auc": 0.53473,
+      "logloss": 0.699698,
+      "brier": 0.252911,
+      "positive_rate": 0.55
+    },
+    "test": {
+      "rows": 2520,
+      "accuracy": 0.553571,
+      "precision": 0.622494,
+      "recall": 0.782903,
+      "f1": 0.693544,
+      "auc": 0.492996,
+      "logloss": 0.693824,
+      "brier": 0.249547,
+      "positive_rate": 0.645238
+    },
+    "top_feature_importances": [
+      {
+        "feature": "vix_close",
+        "importance": 0.028347
+      },
+      {
+        "feature": "breadth_neg_tone_count",
+        "importance": 0.023046
+      },
+      {
+        "feature": "breadth_neg_tone_frac",
+        "importance": 0.020741
+      },
+      {
+        "feature": "country_code_AR",
+        "importance": 0.019806
+      },
+      {
+        "feature": "vix_change_1d",
+        "importance": 0.019453
+      },
+      {
+        "feature": "breadth_high_news_frac",
+        "importance": 0.017938
+      },
+      {
+        "feature": "breadth_high_news_count",
+        "importance": 0.017559
+      },
+      {
+        "feature": "breadth_countries_active",
+        "importance": 0.015621
+      },
+      {
+        "feature": "asset_symbol_INDA",
+        "importance": 0.015604
+      },
+      {
+        "feature": "country_code_TU",
+        "importance": 0.014386
+      },
+      {
+        "feature": "asset_symbol_EWT",
+        "importance": 0.013634
+      },
+      {
+        "feature": "source_mentions_sum_14d",
+        "importance": 0.013588
+      },
+      {
+        "feature": "organization_mentions_sum_14d",
+        "importance": 0.013455
+      },
+      {
+        "feature": "organization_unique_sum_14d",
+        "importance": 0.012916
+      },
+      {
+        "feature": "asset_symbol_TUR",
+        "importance": 0.0125
+      },
+      {
+        "feature": "theme_unique_sum_14d",
+        "importance": 0.012471
+      },
+      {
+        "feature": "market_prev_return_1d",
+        "importance": 0.012356
+      },
+      {
+        "feature": "avg_tone_min_mean_14d",
+        "importance": 0.012211
+      },
+      {
+        "feature": "market_momentum_5d",
+        "importance": 0.01216
+      },
+      {
+        "feature": "market_prev_return_3d",
+        "importance": 0.012096
+      }
+    ]
+  },
+  "catboost": {
+    "best_iteration": 20,
+    "train": {
+      "rows": 11736,
+      "accuracy": 0.628323,
+      "precision": 0.618335,
+      "recall": 0.836684,
+      "f1": 0.711126,
+      "auc": 0.694422,
+      "logloss": 0.653442,
+      "brier": 0.230684,
+      "positive_rate": 0.546779
+    },
+    "validation": {
+      "rows": 2520,
+      "accuracy": 0.548016,
+      "precision": 0.556939,
+      "recall": 0.871573,
+      "f1": 0.679606,
+      "auc": 0.571842,
+      "logloss": 0.686537,
+      "brier": 0.246701,
+      "positive_rate": 0.55
+    },
+    "test": {
+      "rows": 2520,
+      "accuracy": 0.587698,
+      "precision": 0.627442,
+      "recall": 0.888684,
+      "f1": 0.735556,
+      "auc": 0.50667,
+      "logloss": 0.666561,
+      "brier": 0.237063,
+      "positive_rate": 0.645238
+    },
+    "top_feature_importances": [
+      {
+        "feature": "vix_close",
+        "importance": 45.286039
+      },
+      {
+        "feature": "vix_change_1d",
+        "importance": 9.392366
+      },
+      {
+        "feature": "breadth_high_news_count",
+        "importance": 6.89799
+      },
+      {
+        "feature": "breadth_neg_tone_count",
+        "importance": 5.254957
+      },
+      {
+        "feature": "market_prev_return_3d",
+        "importance": 3.439826
+      },
+      {
+        "feature": "breadth_neg_tone_frac",
+        "importance": 2.263963
+      },
+      {
+        "feature": "cameo_event_mentions_3d_vs_14d",
+        "importance": 2.233337
+      },
+      {
+        "feature": "breadth_high_news_frac",
+        "importance": 2.106644
+      },
+      {
+        "feature": "market_momentum_5d",
+        "importance": 2.041306
+      },
+      {
+        "feature": "avg_tone_mean_mean_14d",
+        "importance": 1.979144
+      },
+      {
+        "feature": "breadth_countries_active",
+        "importance": 1.744223
+      },
+      {
+        "feature": "avg_tone_min_mean_14d",
+        "importance": 1.633893
+      },
+      {
+        "feature": "theme_mentions_3d_vs_14d",
+        "importance": 1.578647
+      },
+      {
+        "feature": "person_mentions_3d_vs_14d",
+        "importance": 1.203597
+      },
+      {
+        "feature": "source_diversity_ratio",
+        "importance": 1.062784
+      },
+      {
+        "feature": "cameo_event_mentions_sum_14d",
+        "importance": 1.011944
+      },
+      {
+        "feature": "market_prev_return_1d",
+        "importance": 1.01001
+      },
+      {
+        "feature": "person_unique_per_doc",
+        "importance": 0.836248
+      },
+      {
+        "feature": "avg_tone_max_mean_14d",
+        "importance": 0.803023
+      },
+      {
+        "feature": "organization_mentions_3d_vs_14d",
+        "importance": 0.707536
+      }
+    ]
+  },
+  "ensemble_mean": {
+    "train": {
+      "rows": 11736,
+      "accuracy": 0.704243,
+      "precision": 0.657641,
+      "recall": 0.957613,
+      "f1": 0.779773,
+      "auc": 0.849834,
+      "logloss": 0.621187,
+      "brier": 0.214881,
+      "positive_rate": 0.546779
+    },
+    "validation": {
+      "rows": 2520,
+      "accuracy": 0.527778,
+      "precision": 0.544505,
+      "recall": 0.865079,
+      "f1": 0.668339,
+      "auc": 0.543596,
+      "logloss": 0.688536,
+      "brier": 0.247724,
+      "positive_rate": 0.55
+    },
+    "test": {
+      "rows": 2520,
+      "accuracy": 0.570635,
+      "precision": 0.619508,
+      "recall": 0.867159,
+      "f1": 0.722706,
+      "auc": 0.48795,
+      "logloss": 0.668574,
+      "brier": 0.238086,
+      "positive_rate": 0.645238
+    }
+  },
+  "split": {
+    "target": "label_up_3d",
+    "train_rows": 11736,
+    "validation_rows": 2520,
+    "test_rows": 2520,
+    "train_start": "20240515",
+    "train_end": "20250915",
+    "validation_start": "20250916",
+    "validation_end": "20251229",
+    "test_start": "20251230",
+    "test_end": "20260413"
+  }
+}

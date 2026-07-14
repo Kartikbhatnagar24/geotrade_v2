@@ -58,6 +58,9 @@ GEO_REF: dict[str, tuple[float, float, str]] = {
     "thailand":             (13.75,  100.52,  "TH"),
     "malaysia":             ( 3.14,  101.69,  "MY"),
     "cambodia":             (11.57,  104.92,  "KH"),
+    "singapore":            ( 1.35,  103.82,  "SG"),
+    "laos":                 (17.96,  102.62,  "LA"),
+    "timor-leste":          (-8.56,  125.58,  "TL"),
     "south china sea":      (12.00,  114.00,  "PH"),
 
     # ── South Asia ────────────────────────────────────────────
@@ -72,6 +75,10 @@ GEO_REF: dict[str, tuple[float, float, str]] = {
     "bangladesh":           (23.72,   90.41,  "BD"),
     "dhaka":                (23.72,   90.41,  "BD"),
     "sri lanka":            ( 6.92,   79.86,  "LK"),
+    "nepal":                (27.71,   85.32,  "NP"),
+    "kathmandu":            (27.71,   85.32,  "NP"),
+    "mongolia":             (47.91,  106.88,  "MN"),
+    "ulaanbaatar":          (47.91,  106.88,  "MN"),
 
     # ── Middle East ───────────────────────────────────────────
     "israel":               (31.77,   35.22,  "IL"),
@@ -106,6 +113,7 @@ GEO_REF: dict[str, tuple[float, float, str]] = {
     # ── Europe ────────────────────────────────────────────────
     "nato":                 (50.87,    4.43,  "BE"),
     "brussels":             (50.85,    4.35,  "BE"),
+    "belgium":              (50.85,    4.35,  "BE"),
     "germany":              (52.52,   13.40,  "DE"),
     "berlin":               (52.52,   13.40,  "DE"),
     "france":               (48.85,    2.35,  "FR"),
@@ -118,6 +126,26 @@ GEO_REF: dict[str, tuple[float, float, str]] = {
     "warsaw":               (52.23,   21.01,  "PL"),
     "finland":              (60.17,   24.94,  "FI"),
     "sweden":               (59.33,   18.07,  "SE"),
+    "spain":                (40.42,   -3.70,  "ES"),
+    "madrid":               (40.42,   -3.70,  "ES"),
+    "italy":                (41.90,   12.50,  "IT"),
+    "rome":                 (41.90,   12.50,  "IT"),
+    "netherlands":          (52.37,    4.90,  "NL"),
+    "amsterdam":            (52.37,    4.90,  "NL"),
+    "switzerland":          (46.95,    7.45,  "CH"),
+    "bern":                 (46.95,    7.45,  "CH"),
+    "portugal":             (38.72,   -9.14,  "PT"),
+    "lisbon":               (38.72,   -9.14,  "PT"),
+    "austria":              (48.21,   16.37,  "AT"),
+    "vienna":               (48.21,   16.37,  "AT"),
+    "czech":                (50.08,   14.44,  "CZ"),
+    "prague":               (50.08,   14.44,  "CZ"),
+    "denmark":              (55.68,   12.57,  "DK"),
+    "copenhagen":           (55.68,   12.57,  "DK"),
+    "norway":               (59.91,   10.75,  "NO"),
+    "oslo":                 (59.91,   10.75,  "NO"),
+    "romania":              (44.43,   26.10,  "RO"),
+    "bucharest":            (44.43,   26.10,  "RO"),
     "greece":               (37.98,   23.73,  "GR"),
     "turkey":               (39.93,   32.86,  "TR"),
     "ankara":               (39.93,   32.86,  "TR"),
@@ -144,6 +172,9 @@ GEO_REF: dict[str, tuple[float, float, str]] = {
     "transnistria":         (47.00,   29.50,  "MD"),
     "kazakhstan":           (51.18,   71.45,  "KZ"),
     "uzbekistan":           (41.30,   69.24,  "UZ"),
+    "tajikistan":           (38.56,   68.77,  "TJ"),
+    "kyrgyzstan":           (42.87,   74.60,  "KG"),
+    "turkmenistan":         (37.95,   58.38,  "TM"),
 
     # ── Africa — North ────────────────────────────────────────
     "algeria":              (36.74,    3.06,  "DZ"),
@@ -184,6 +215,19 @@ GEO_REF: dict[str, tuple[float, float, str]] = {
     "eritrea":              (15.34,   38.93,  "ER"),
     "djibouti":             (11.59,   43.15,  "DJ"),
 
+    # ── Africa — East & Horn additions ────────────────────────
+    "ghana":                (  5.55,   -0.20,  "GH"),
+    "accra":                (  5.55,   -0.20,  "GH"),
+    "tanzania":             ( -6.17,   35.74,  "TZ"),
+    "dar es salaam":        ( -6.80,   39.29,  "TZ"),
+    "angola":               ( -8.84,   13.23,  "AO"),
+    "luanda":               ( -8.84,   13.23,  "AO"),
+    "zambia":               (-15.42,   28.28,  "ZM"),
+    "malawi":               (-13.96,   33.79,  "MW"),
+    "namibia":              (-22.56,   17.08,  "NA"),
+    "botswana":             (-24.65,   25.91,  "BW"),
+    "madagascar":           (-18.91,   47.54,  "MG"),
+
     # ── Africa — Central & Southern ───────────────────────────
     "congo":                (-4.32,   15.32,  "CD"),
     "drc":                  (-4.32,   15.32,  "CD"),
@@ -197,6 +241,10 @@ GEO_REF: dict[str, tuple[float, float, str]] = {
     "south africa":         (-25.75,  28.19,  "ZA"),
 
     # ── Americas ─────────────────────────────────────────────
+    "canada":               (45.42,  -75.69,  "CA"),
+    "canadian":             (45.42,  -75.69,  "CA"),
+    "ottawa":               (45.42,  -75.69,  "CA"),
+    "toronto":              (43.65,  -79.38,  "CA"),
     "venezuela":            (10.49,  -66.88,  "VE"),
     "caracas":              (10.49,  -66.88,  "VE"),
     "maduro":               (10.49,  -66.88,  "VE"),
@@ -207,6 +255,12 @@ GEO_REF: dict[str, tuple[float, float, str]] = {
     "argentina":            (-34.60, -58.38,  "AR"),
     "buenos aires":         (-34.60, -58.38,  "AR"),
     "mexico":               (19.43,  -99.13,  "MX"),
+    "guatemala":            (14.64,  -90.51,  "GT"),
+    "honduras":             (14.07,  -87.21,  "HN"),
+    "el salvador":          (13.69,  -89.19,  "SV"),
+    "panama":               ( 8.99,  -79.52,  "PA"),
+    "costa rica":           ( 9.93,  -84.08,  "CR"),
+    "dominican republic":   (18.48,  -69.90,  "DO"),
     "haiti":                (18.54,  -72.34,  "HT"),
     "port-au-prince":       (18.54,  -72.34,  "HT"),
     "cuba":                 (23.13,  -82.38,  "CU"),
@@ -215,6 +269,26 @@ GEO_REF: dict[str, tuple[float, float, str]] = {
     "ecuador":              (-0.23,  -78.52,  "EC"),
     "bolivia":              (-16.50, -68.15,  "BO"),
     "chile":                (-33.46, -70.65,  "CL"),
+    "uruguay":              (-34.90, -56.19,  "UY"),
+    "paraguay":             (-25.29, -57.65,  "PY"),
+
+    # ── Pacific ───────────────────────────────────────────────
+    "australia":            (-35.28,  149.13,  "AU"),
+    "australia's":          (-35.28,  149.13,  "AU"),
+    "canberra":             (-35.28,  149.13,  "AU"),
+    "sydney":               (-33.87,  151.21,  "AU"),
+    "melbourne":            (-37.81,  144.96,  "AU"),
+    "new zealand":          (-41.29,  174.78,  "NZ"),
+    "wellington":           (-41.29,  174.78,  "NZ"),
+    "fiji":                 (-18.14,  178.44,  "FJ"),
+
+    # ── Possessive forms for top-mentioned countries ──────────
+    "ukraine's":            (50.45,   30.52,  "UA"),
+    "russia's":             (55.75,   37.62,  "RU"),
+    "iran's":               (35.69,   51.42,  "IR"),
+    "israel's":             (31.77,   35.22,  "IL"),
+    "china's":              (39.91,  116.39,  "CN"),
+    "canada's":             (45.42,  -75.69,  "CA"),
 
     # ── Disputed / Conflict zones ─────────────────────────────
     "crimea":               (44.95,   34.10,  "UA"),

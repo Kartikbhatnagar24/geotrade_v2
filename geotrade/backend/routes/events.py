@@ -46,12 +46,18 @@ def list_events(
         if date_to:   df["$lte"] = date_to
         query["date"] = df
 
-    docs = list(
-        get_db()[settings.COL_DAILY_SIGNALS]
-        .find(query, {"_id": 0})
-        .sort("tension_score", -1)
-        .limit(limit)
-    )
+    pipeline: list = []
+    if query:
+        pipeline.append({"$match": query})
+    pipeline += [
+        {"$sort": {"date": -1, "tension_score": -1}},
+        {"$group": {"_id": "$iso", "doc": {"$first": "$$ROOT"}}},
+        {"$replaceRoot": {"newRoot": "$doc"}},
+        {"$sort": {"tension_score": -1}},
+        {"$limit": limit},
+        {"$project": {"_id": 0}},
+    ]
+    docs = list(get_db()[settings.COL_DAILY_SIGNALS].aggregate(pipeline))
     return {"count": len(docs), "events": [_to_event(d) for d in docs]}
 
 

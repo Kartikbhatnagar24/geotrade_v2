@@ -1,10 +1,18 @@
 """
 pipeline/ingestion/store.py
 ────────────────────────────
-Handles deduplication and insertion of raw articles into MongoDB.
+Handles deduplication, insertion, and retention pruning of raw articles.
+
+Retention rule:
+  raw_articles older than 2× INGESTION_DAYS_BACK are pruned on every ingest.
+  The 2× factor gives a comfortable buffer for re-processing without keeping
+  unbounded history that would slow NLP and skew "recent news" queries.
 """
 
+from datetime import datetime, timedelta, timezone
+
 from tqdm import tqdm
+
 from config.settings import settings
 from pipeline.utils.db import get_db
 
@@ -46,6 +54,19 @@ def insert_articles(articles: list[dict]) -> tuple[int, int]:
             skipped += 1  # duplicate key → already exists
 
     return inserted, skipped
+
+
+def prune_old_articles() -> int:
+    """
+    Delete raw_articles whose published_at is older than 2× INGESTION_DAYS_BACK.
+
+    Returns the number of articles deleted. Anything with no parseable date is
+    left alone — it will be filtered out at scoring time anyway.
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(days=settings.INGESTION_DAYS_BACK * 2)
+    cutoff_iso = cutoff.isoformat()
+    col = get_db()[settings.COL_RAW_ARTICLES]
+    return col.delete_many({"published_at": {"$lt": cutoff_iso}}).deleted_count
 
 
 def count_total() -> int:

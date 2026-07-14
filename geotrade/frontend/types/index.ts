@@ -39,14 +39,15 @@ export interface StatsData {
 }
 
 export type TensionLabel = "high" | "medium" | "low";
-export type EventLabel = "conflict" | "diplomacy" | "sanctions" | "elections" | "trade" | "unknown";
+export type EventLabel = "conflict" | "military" | "diplomacy" | "sanctions" | "elections" | "trade" | "humanitarian" | "unknown";
 export type FilterType = "all" | TensionLabel;
 
 export interface StockSignal {
   ticker: string;
   name: string;
-  type: string;
-  direction: "LONG" | "SHORT" | "WATCH";
+  role: "local_equity" | "safe_haven" | "sector_proxy";
+  direction: "LONG" | "SHORT" | "WATCH" | "REDUCE";
+  signal_strength: number;
   rationale: string;
   price: number | null;
   change_5d: number | null;
@@ -83,17 +84,29 @@ export interface MarketSignal {
 }
 
 export interface TradingPrediction {
-  vix_direction: "increase" | "decrease" | "uncertain";
-  confidence: number;
-  confidence_pct: string;
-  news_type_context: string;
-  trade_idea: string;
-  risk_level: "HIGH" | "MEDIUM" | "LOW";
-  model_source?: string;
-  tension_momentum?: TensionMomentum;
-  market_signals?: MarketSignal[];
-  key_risks?: string[];
+  // Direction model (label_up_3d) — will price be higher in 3 days?
+  direction:      "increase" | "decrease" | "uncertain" | null;
+  direction_prob: number | null;
+  direction_pct:  string | null;
+  direction_auc:  number | null;
+  // Volatility model (label_vol_high_5d) — will realized vol be higher over next 5 days?
+  vol_level: "high" | "low" | "neutral" | null;
+  vol_prob:  number | null;
+  vol_pct:   string | null;
+  vol_auc:   number | null;
+  // Combined
+  risk_level:         "HIGH" | "MEDIUM" | "LOW";
+  news_type_context:  string;
+  model_source?:      string;
+  no_data_reason?:    string;
+  tension_momentum?:  TensionMomentum;
+  market_signals?:    MarketSignal[];
+  key_risks?:         string[];
   positioning_summary?: string;
+  // Legacy aliases (rule-based fallback still uses these)
+  vix_direction?:  "increase" | "decrease" | "uncertain";
+  confidence?:     number;
+  confidence_pct?: string;
 }
 
 export interface TradingData {
@@ -102,6 +115,8 @@ export interface TradingData {
     tension_score: number;
     tension_label: string;
     date: string;
+    age_days?: number | null;
+    is_stale?: boolean;
     event_count: number;
     top_event_label: string;
     sample_title: string;

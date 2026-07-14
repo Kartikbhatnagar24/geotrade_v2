@@ -11,18 +11,32 @@ Returns a full trading intelligence package for a country:
                 key risks, positioning summary
 """
 
-import numpy as np
+from datetime import datetime, timedelta, timezone
+
 from fastapi import APIRouter, HTTPException
 from backend.core.database import get_db
 from config.settings import settings
 from pipeline.scoring.stocks import get_stock_signals
-from pipeline.nlp.classifier import classify_news_type
-from pipeline.modeling.train import load_best_model
+from pipeline.modeling.predictor import predict_for_country, get_meta as get_predictor_meta
 
 router = APIRouter(prefix="/trading", tags=["Trading"])
 
-# Load saved ML model once at startup (None if step4 hasn't been run yet)
-_ML_MODEL, _ML_META = load_best_model()
+# A signal older than this is flagged as stale to the UI rather than passed off
+# as "current". 7 days lines up with the GDELT ingestion window.
+_TENSION_STALE_DAYS = 7
+# Recent-news lookback — must agree with the ingestion retention window (2× INGESTION_DAYS_BACK).
+_RECENT_NEWS_LOOKBACK_DAYS = max(settings.INGESTION_DAYS_BACK, 14) * 2
+
+
+def _age_in_days(date_str: str) -> int | None:
+    """Days between today (UTC) and a YYYY-MM-DD string. None if unparseable."""
+    if not date_str:
+        return None
+    try:
+        d = datetime.strptime(date_str[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+    return (datetime.now(timezone.utc) - d).days
 
 
 # ── DB helpers ────────────────────────────────────────────────────────────────
@@ -33,15 +47,19 @@ def _get_latest_tension(db, iso: str) -> dict:
     )
     if not doc:
         return {}
+    date     = doc.get("date", "")
+    age_days = _age_in_days(date)
     return {
         "tension_score":     doc.get("tension_score", 0.5),
         "smoothed_score":    doc.get("smoothed_score", doc.get("tension_score", 0.5)),
         "tension_label":     doc.get("tension_label", "medium"),
-        "date":              doc.get("date", ""),
+        "date":              date,
+        "age_days":          age_days,
+        "is_stale":          age_days is not None and age_days > _TENSION_STALE_DAYS,
         "event_count":       doc.get("event_count", 0),
-        "conflict_count":    doc.get("conflict_count", 0),
+        "conflict_gravity":  doc.get("conflict_gravity", 0.0),
+        "coverage_signal":   doc.get("coverage_signal", 0.0),
         "avg_neg_sentiment": doc.get("avg_neg_sentiment", 0.0),
-        "conflict_ratio":    doc.get("conflict_ratio", 0.0),
         "top_event_label":   doc.get("top_event_label", "unknown"),
         "sample_title":      doc.get("sample_title", ""),
         "sample_url":        doc.get("sample_url", ""),
@@ -49,10 +67,18 @@ def _get_latest_tension(db, iso: str) -> dict:
 
 
 def _get_recent_news(db, iso: str, limit: int = 8) -> list[dict]:
-    """Pull last N processed events — now includes sentiment + intensity fields."""
+    """Pull last N processed events within the live ingestion window."""
+    cutoff = (datetime.now(timezone.utc)
+              - timedelta(days=_RECENT_NEWS_LOOKBACK_DAYS)).isoformat()
     docs = list(
         db[settings.COL_PROCESSED_EVENTS]
-        .find({"countries.iso": iso.upper()}, {"_id": 0})
+        .find(
+            {
+                "countries.iso": iso.upper(),
+                "published_at":  {"$gte": cutoff},
+            },
+            {"_id": 0},
+        )
         .sort("published_at", -1)
         .limit(limit)
     )
@@ -67,7 +93,7 @@ def _get_recent_news(db, iso: str, limit: int = 8) -> list[dict]:
             "url":             d.get("url", ""),
             "source":          d.get("source", ""),
             "date":            d.get("published_at", "")[:10] if d.get("published_at") else "",
-            "news_type":       classify_news_type(text),
+            "news_type":       d.get("event_label", "other"),
             "event_label":     d.get("event_label", "unknown"),
             "sentiment_label": sent_label,
             "sentiment_score": round(sent_score, 3),
@@ -341,8 +367,7 @@ def _get_key_risks(news_type: str, tension: float, iso: str) -> list[str]:
     return (base + extras)[:3]
 
 
-def _positioning_summary(tension: float, vix_dir: str, momentum: dict,
-                         news_type: str) -> str:
+def _positioning_summary(tension: float, vix_dir: str, momentum: dict) -> str:
     accel = momentum.get("acceleration", "steady")
     if vix_dir == "increase" and tension >= 0.7:
         prefix = "DEFENSIVE"
@@ -364,27 +389,8 @@ def _positioning_summary(tension: float, vix_dir: str, momentum: dict,
 
 # ── ML prediction ────────────────────────────────────────────────────────────
 
-def _ml_prediction(tension: float, news_type: str, conflict_ratio: float,
-                   event_count: int) -> tuple[str, float, bool]:
-    if _ML_MODEL is None:
-        return None, None, False
-    try:
-        expected = _ML_META.get("features", [])
-        if not expected:
-            return None, None, False
-        news_labels = ["conflict", "military", "sanctions", "economic",
-                       "diplomatic", "humanitarian", "other"]
-        row = [tension, conflict_ratio, min(event_count, 50)]
-        for lbl in news_labels:
-            row.append(1.0 if news_type == lbl else 0.0)
-        row = row[:len(expected)]
-        while len(row) < len(expected):
-            row.append(0.0)
-        prob      = float(_ML_MODEL.predict_proba(np.array([row]))[0][1])
-        direction = "increase" if prob >= 0.55 else "decrease" if prob <= 0.45 else "uncertain"
-        return direction, round(prob, 3), True
-    except Exception:
-        return None, None, False
+def _ml_prediction(db, iso: str) -> dict:
+    return predict_for_country(iso)
 
 
 # ── Heuristic fallback ────────────────────────────────────────────────────────
@@ -402,47 +408,88 @@ _TRADE_IDEAS: dict[tuple, str] = {
 }
 
 
-def _generate_prediction(tension: float, news_type: str, label: str,
-                         conflict_ratio: float, event_count: int,
+def _generate_prediction(db, tension: float, news_type: str,
                          momentum: dict, iso: str) -> dict:
     # ── Try ML model ──────────────────────────────────────────
-    ml_dir, ml_prob, used_ml = _ml_prediction(tension, news_type, conflict_ratio, event_count)
-    if used_ml and ml_dir is not None:
-        vix_direction = ml_dir
-        confidence    = ml_prob
-        model_source  = f"LightGBM/RF · AUC {_ML_META.get('roc_auc', '?')}"
+    ml_result = _ml_prediction(db, iso)
+    if ml_result["used_ml"]:
+        # Direction signal (label_up_3d)
+        direction      = ml_result.get("direction") or ml_result.get("vix_direction")
+        direction_prob = ml_result.get("direction_prob") or ml_result.get("probability")
+        direction_pct  = ml_result.get("direction_pct") or ml_result.get("confidence_pct")
+        direction_auc  = ml_result.get("direction_auc")
+        # Volatility signal (label_vol_high_5d)
+        vol_level      = ml_result.get("vol_level")
+        vol_prob       = ml_result.get("vol_prob")
+        vol_pct        = ml_result.get("vol_pct")
+        vol_auc        = ml_result.get("vol_auc")
+        # Risk driven by vol model when available, else tension
+        risk_level     = ml_result.get("risk_level") or (
+            "HIGH" if tension >= 0.70 else "MEDIUM" if tension >= 0.40 else "LOW"
+        )
+        no_data_reason = ""
+        model_source   = "ml-ensemble"
     else:
-        model_source = "rule-based"
-        if tension >= 0.70:
-            vix_direction = "increase"
-            confidence    = round(min(0.55 + tension * 0.30, 0.95), 2)
-        elif tension >= 0.40:
-            vix_direction = "uncertain"
-            confidence    = round(min(0.40 + tension * 0.15, 0.95), 2)
-        else:
-            vix_direction = "decrease"
-            confidence    = round(min(0.60 - tension * 0.20, 0.95), 2)
+        no_data_reason = ml_result.get("no_data_reason", "")
+        model_source   = "rule-based"
+        vol_level = vol_prob = vol_pct = vol_auc = None
+        direction_auc = None
 
-    key        = (vix_direction, news_type) if news_type != "other" else ("uncertain", "other")
-    trade_idea = _TRADE_IDEAS.get(key, _TRADE_IDEAS.get(("uncertain", "other"),
-                                  "Monitor situation before committing capital."))
+        accel = momentum.get("acceleration", "steady")
+        chg7d = momentum.get("change_7d", 0.0)
+        chg3d = momentum.get("change_3d", 0.0)
+
+        # High tension, or medium tension that is actively rising -> VIX likely up
+        if tension >= 0.65 or (tension >= 0.50 and accel == "rising"):
+            direction      = "increase"
+            direction_prob = round(min(0.56 + tension * 0.25, 0.92), 2)
+        # Low tension, or medium tension that is actively falling -> VIX likely down
+        elif tension < 0.30 or (tension < 0.45 and accel == "falling"):
+            direction      = "decrease"
+            direction_prob = round(max(0.60 - tension * 0.30, 0.55), 2)
+        # Middle band: use recent momentum to break the tie
+        elif chg3d > 0.04 or chg7d > 0.07:
+            direction      = "increase"
+            direction_prob = round(min(0.54 + abs(chg7d) * 0.30, 0.82), 2)
+        elif chg3d < -0.04 or chg7d < -0.07:
+            direction      = "decrease"
+            direction_prob = round(min(0.54 + abs(chg7d) * 0.30, 0.82), 2)
+        # Only truly flat situations get "uncertain"
+        else:
+            direction      = "uncertain"
+            direction_prob = 0.50
+
+        direction_pct  = f"{round(direction_prob * 100)}%"
+        risk_level     = "HIGH" if tension >= 0.70 else "MEDIUM" if tension >= 0.40 else "LOW"
 
     market_signals = _generate_market_signals(iso, tension, news_type, momentum)
     key_risks      = _get_key_risks(news_type, tension, iso)
-    pos_summary    = _positioning_summary(tension, vix_direction, momentum, news_type)
+    pos_summary    = _positioning_summary(tension, direction, momentum)
 
     return {
-        "vix_direction":      vix_direction,
-        "confidence":         confidence,
-        "confidence_pct":     f"{round(confidence * 100)}%",
+        # Direction signal
+        "direction":      direction,
+        "direction_prob": direction_prob,
+        "direction_pct":  direction_pct,
+        "direction_auc":  direction_auc,
+        # Volatility signal
+        "vol_level":      vol_level,
+        "vol_prob":       vol_prob,
+        "vol_pct":        vol_pct,
+        "vol_auc":        vol_auc,
+        # Combined
+        "risk_level":         risk_level,
         "news_type_context":  news_type,
-        "trade_idea":         trade_idea,
-        "risk_level":         "HIGH" if tension >= 0.70 else "MEDIUM" if tension >= 0.40 else "LOW",
         "model_source":       model_source,
+        "no_data_reason":     no_data_reason,
         "tension_momentum":   momentum,
         "market_signals":     market_signals,
         "key_risks":          key_risks,
         "positioning_summary": pos_summary,
+        # Legacy aliases kept for backward compat
+        "vix_direction":  direction,
+        "confidence":     direction_prob,
+        "confidence_pct": direction_pct,
     }
 
 
@@ -470,13 +517,11 @@ def get_trading_signals(country_iso: str):
 
     stock_signals = get_stock_signals(iso, tension_score, dominant_type)
     prediction    = _generate_prediction(
-        tension       = tension_score,
-        news_type     = dominant_type,
-        label         = tension_ctx.get("tension_label", "medium"),
-        conflict_ratio= tension_ctx.get("conflict_ratio", 0.0),
-        event_count   = tension_ctx.get("event_count", 0),
-        momentum      = momentum,
-        iso           = iso,
+        db        = db,
+        tension   = tension_score,
+        news_type = dominant_type,
+        momentum  = momentum,
+        iso       = iso,
     )
 
     return {

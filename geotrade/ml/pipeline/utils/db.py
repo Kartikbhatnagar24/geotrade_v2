@@ -26,7 +26,7 @@ def get_client() -> MongoClient:
             connectTimeoutMS=6000,
         )
         _client.admin.command("ping")   # fail fast if unreachable
-        print(f"[MongoDB] Connected → {settings.MONGODB_DB}")
+        print(f"[MongoDB] Connected to {settings.MONGODB_DB}")
     return _client
 
 

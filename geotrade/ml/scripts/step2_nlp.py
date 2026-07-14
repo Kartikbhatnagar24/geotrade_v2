@@ -1,14 +1,16 @@
-"""
-scripts/step2_nlp.py — NLP Processing
+﻿"""
+scripts/step2_nlp.py - NLP Processing
 =======================================
 Reads unprocessed articles from raw_articles.
 Runs: event classification + sentiment analysis + country NER.
 Writes results to MongoDB: processed_events
 
 Run (from project root):
-    python scripts/step2_nlp.py
+    python scripts/step2_nlp.py              # process new articles only
+    python scripts/step2_nlp.py --reprocess  # re-run NLP on all articles
 """
 
+import argparse
 import sys
 from pathlib import Path
 _ML = Path(__file__).resolve().parent.parent        # geotrade/ml
@@ -19,17 +21,31 @@ sys.path.insert(0, str(_ML))     # for pipeline.*
 from tqdm import tqdm
 
 from pipeline.utils.logger import StepLogger
+from pipeline.utils.db import get_db
 from pipeline.nlp.classify import classify_event, analyze_sentiment, neg_score
 from pipeline.nlp.ner import extract_countries, intensity_score
 from pipeline.nlp.store import (
     ensure_indexes, fetch_unprocessed, save_event, label_distribution,
+    prune_orphan_events,
 )
+from config.settings import settings
 
-log = StepLogger("Step 2 — NLP Processing")
+log = StepLogger("Step 2 - NLP Processing")
 
 
-def main():
+def reset_processed_flags():
+    """Mark all raw_articles as unprocessed so step2 re-runs NLP on them."""
+    result = get_db()[settings.COL_RAW_ARTICLES].update_many(
+        {}, {"$set": {"processed": False}}
+    )
+    log.info(f"Reset {result.modified_count} articles to unprocessed")
+
+
+def main(reprocess: bool = False):
     log.header()
+    if reprocess:
+        log.info("--reprocess flag set: resetting all articles to unprocessed...")
+        reset_processed_flags()
     log.info("Loading HuggingFace models (first run downloads ~1 GB)...")
 
     ensure_indexes()
@@ -50,9 +66,9 @@ def main():
 
             event_label,  event_score    = classify_event(text)
             sent_label,   sent_score     = analyze_sentiment(text)
-            negativity                   = neg_score(sent_label, sent_score)
-            countries                    = extract_countries(text)
             intensity                    = intensity_score(text)
+            negativity                   = neg_score(sent_label, sent_score, intensity)
+            countries                    = extract_countries(text)
 
             save_event(
                 article,
@@ -67,16 +83,26 @@ def main():
             log.error(f"Article '{article.get('title','')[:50]}': {e}")
             errors += 1
 
+    orphans = prune_orphan_events()
+
     dist = label_distribution()
     dist_str = "  |  ".join(f"{k}: {v}" for k, v in sorted(dist.items()))
 
     log.footer({
         "Processed":      processed,
         "Errors":         errors,
+        "Orphans pruned": orphans,
         "Label dist":     dist_str,
         "Next step":      "python scripts/step3_score.py",
     })
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--reprocess", action="store_true",
+        help="Re-run NLP on all articles, not just new ones",
+    )
+    args = parser.parse_args()
+    main(args.reprocess)
+

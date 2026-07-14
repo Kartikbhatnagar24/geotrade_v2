@@ -69,3 +69,20 @@ def save_event(article: dict, event_label: str, event_score: float,
 def label_distribution() -> dict[str, int]:
     pipeline = [{"$group": {"_id": "$event_label", "n": {"$sum": 1}}}]
     return {r["_id"]: r["n"] for r in get_db()[settings.COL_PROCESSED_EVENTS].aggregate(pipeline)}
+
+
+def prune_orphan_events() -> int:
+    """
+    Delete processed_events whose source raw_article no longer exists.
+
+    Step 1 prunes raw_articles by published_at; this keeps processed_events
+    aligned with the live ingestion window so the UI's "recent news" never
+    surfaces an event whose origin article has been retired.
+    """
+    db = get_db()
+    raw_ids = {str(_id) for _id in db[settings.COL_RAW_ARTICLES].distinct("_id")}
+    if not raw_ids:
+        return 0
+    return db[settings.COL_PROCESSED_EVENTS].delete_many(
+        {"article_id": {"$nin": list(raw_ids)}}
+    ).deleted_count

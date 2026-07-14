@@ -1,0 +1,403 @@
+{
+  "lightgbm": {
+    "best_iteration": 57,
+    "train": {
+      "rows": 11736,
+      "accuracy": 0.813224,
+      "precision": 0.810103,
+      "recall": 0.821888,
+      "f1": 0.815953,
+      "auc": 0.889196,
+      "logloss": 0.472589,
+      "brier": 0.15034,
+      "positive_rate": 0.503749
+    },
+    "validation": {
+      "rows": 2520,
+      "accuracy": 0.675794,
+      "precision": 0.661417,
+      "recall": 0.728707,
+      "f1": 0.693433,
+      "auc": 0.743775,
+      "logloss": 0.599505,
+      "brier": 0.20679,
+      "positive_rate": 0.503175
+    },
+    "test": {
+      "rows": 2520,
+      "accuracy": 0.651984,
+      "precision": 0.732815,
+      "recall": 0.45712,
+      "f1": 0.563029,
+      "auc": 0.742269,
+      "logloss": 0.615637,
+      "brier": 0.213391,
+      "positive_rate": 0.490476
+    },
+    "top_feature_importances": [
+      {
+        "feature": "market_volatility_5d",
+        "importance": 224.0
+      },
+      {
+        "feature": "vix_close",
+        "importance": 198.0
+      },
+      {
+        "feature": "vix_change_1d",
+        "importance": 103.0
+      },
+      {
+        "feature": "market_momentum_5d",
+        "importance": 90.0
+      },
+      {
+        "feature": "market_prev_return_3d",
+        "importance": 86.0
+      },
+      {
+        "feature": "market_prev_return_1d",
+        "importance": 76.0
+      },
+      {
+        "feature": "avg_tone_mean_mean_14d",
+        "importance": 51.0
+      },
+      {
+        "feature": "counts_mentions_sum_14d",
+        "importance": 49.0
+      },
+      {
+        "feature": "news_intensity_14d",
+        "importance": 45.0
+      },
+      {
+        "feature": "organization_mentions_sum_14d",
+        "importance": 40.0
+      },
+      {
+        "feature": "theme_unique_sum_14d",
+        "importance": 38.0
+      },
+      {
+        "feature": "person_unique_sum_14d",
+        "importance": 34.0
+      },
+      {
+        "feature": "organization_unique_sum_14d",
+        "importance": 34.0
+      },
+      {
+        "feature": "theme_density_14d",
+        "importance": 31.0
+      },
+      {
+        "feature": "organization_mentions_per_doc",
+        "importance": 29.0
+      },
+      {
+        "feature": "breadth_neg_tone_count",
+        "importance": 26.0
+      },
+      {
+        "feature": "avg_tone_max_mean_14d",
+        "importance": 25.0
+      },
+      {
+        "feature": "breadth_neg_tone_frac",
+        "importance": 25.0
+      },
+      {
+        "feature": "breadth_high_news_frac",
+        "importance": 24.0
+      },
+      {
+        "feature": "cameo_event_mentions_sum_14d",
+        "importance": 22.0
+      }
+    ]
+  },
+  "xgboost": {
+    "best_iteration": 47,
+    "train": {
+      "rows": 11736,
+      "accuracy": 0.8053,
+      "precision": 0.800796,
+      "recall": 0.816644,
+      "f1": 0.808642,
+      "auc": 0.887136,
+      "logloss": 0.480811,
+      "brier": 0.154143,
+      "positive_rate": 0.503749
+    },
+    "validation": {
+      "rows": 2520,
+      "accuracy": 0.663095,
+      "precision": 0.650179,
+      "recall": 0.7153,
+      "f1": 0.681187,
+      "auc": 0.740551,
+      "logloss": 0.598817,
+      "brier": 0.206878,
+      "positive_rate": 0.503175
+    },
+    "test": {
+      "rows": 2520,
+      "accuracy": 0.647222,
+      "precision": 0.720457,
+      "recall": 0.458738,
+      "f1": 0.560554,
+      "auc": 0.733174,
+      "logloss": 0.617832,
+      "brier": 0.214252,
+      "positive_rate": 0.490476
+    },
+    "top_feature_importances": [
+      {
+        "feature": "market_volatility_5d",
+        "importance": 0.052196
+      },
+      {
+        "feature": "asset_symbol_KSA",
+        "importance": 0.028835
+      },
+      {
+        "feature": "source_mentions_sum_14d",
+        "importance": 0.023602
+      },
+      {
+        "feature": "asset_symbol_EZA",
+        "importance": 0.018608
+      },
+      {
+        "feature": "asset_symbol_TUR",
+        "importance": 0.017901
+      },
+      {
+        "feature": "asset_symbol_ARGT",
+        "importance": 0.017766
+      },
+      {
+        "feature": "asset_symbol_EWY",
+        "importance": 0.016615
+      },
+      {
+        "feature": "country_code_ID",
+        "importance": 0.016402
+      },
+      {
+        "feature": "organization_unique_sum_14d",
+        "importance": 0.015767
+      },
+      {
+        "feature": "country_code_KS",
+        "importance": 0.015727
+      },
+      {
+        "feature": "vix_close",
+        "importance": 0.015516
+      },
+      {
+        "feature": "country_code_SA",
+        "importance": 0.014528
+      },
+      {
+        "feature": "asset_symbol_EWH",
+        "importance": 0.013875
+      },
+      {
+        "feature": "vix_change_1d",
+        "importance": 0.013618
+      },
+      {
+        "feature": "cameo_event_mentions_sum_14d",
+        "importance": 0.013618
+      },
+      {
+        "feature": "organization_mentions_sum_14d",
+        "importance": 0.013579
+      },
+      {
+        "feature": "country_code_AR",
+        "importance": 0.013333
+      },
+      {
+        "feature": "market_prev_return_1d",
+        "importance": 0.012975
+      },
+      {
+        "feature": "country_code_SF",
+        "importance": 0.012747
+      },
+      {
+        "feature": "numarts_sum_sum_14d",
+        "importance": 0.01247
+      }
+    ]
+  },
+  "catboost": {
+    "best_iteration": 169,
+    "train": {
+      "rows": 11736,
+      "accuracy": 0.766445,
+      "precision": 0.760046,
+      "recall": 0.783829,
+      "f1": 0.771755,
+      "auc": 0.860693,
+      "logloss": 0.492546,
+      "brier": 0.160892,
+      "positive_rate": 0.503749
+    },
+    "validation": {
+      "rows": 2520,
+      "accuracy": 0.681746,
+      "precision": 0.660248,
+      "recall": 0.757098,
+      "f1": 0.705364,
+      "auc": 0.751434,
+      "logloss": 0.595476,
+      "brier": 0.204719,
+      "positive_rate": 0.503175
+    },
+    "test": {
+      "rows": 2520,
+      "accuracy": 0.662698,
+      "precision": 0.745547,
+      "recall": 0.47411,
+      "f1": 0.579624,
+      "auc": 0.73862,
+      "logloss": 0.622706,
+      "brier": 0.215372,
+      "positive_rate": 0.490476
+    },
+    "top_feature_importances": [
+      {
+        "feature": "market_volatility_5d",
+        "importance": 29.936573
+      },
+      {
+        "feature": "vix_change_1d",
+        "importance": 8.338709
+      },
+      {
+        "feature": "vix_close",
+        "importance": 8.270805
+      },
+      {
+        "feature": "market_prev_return_3d",
+        "importance": 3.150378
+      },
+      {
+        "feature": "avg_tone_mean_mean_14d",
+        "importance": 3.031686
+      },
+      {
+        "feature": "market_momentum_5d",
+        "importance": 2.733963
+      },
+      {
+        "feature": "market_prev_return_1d",
+        "importance": 2.348259
+      },
+      {
+        "feature": "counts_mentions_sum_14d",
+        "importance": 2.204813
+      },
+      {
+        "feature": "news_intensity_14d",
+        "importance": 1.885226
+      },
+      {
+        "feature": "organization_mentions_per_doc",
+        "importance": 1.62624
+      },
+      {
+        "feature": "breadth_neg_tone_count",
+        "importance": 1.474504
+      },
+      {
+        "feature": "theme_density_14d",
+        "importance": 1.470879
+      },
+      {
+        "feature": "document_count_sum_14d",
+        "importance": 1.354319
+      },
+      {
+        "feature": "breadth_high_news_frac",
+        "importance": 1.326335
+      },
+      {
+        "feature": "avg_tone_max_mean_14d",
+        "importance": 1.295264
+      },
+      {
+        "feature": "breadth_countries_active",
+        "importance": 1.24077
+      },
+      {
+        "feature": "organization_unique_sum_14d",
+        "importance": 1.18946
+      },
+      {
+        "feature": "numarts_sum_sum_14d",
+        "importance": 1.134216
+      },
+      {
+        "feature": "breadth_neg_tone_frac",
+        "importance": 1.087228
+      },
+      {
+        "feature": "cameo_event_mentions_sum_14d",
+        "importance": 1.04215
+      }
+    ]
+  },
+  "ensemble_mean": {
+    "train": {
+      "rows": 11736,
+      "accuracy": 0.800613,
+      "precision": 0.796088,
+      "recall": 0.812246,
+      "f1": 0.804086,
+      "auc": 0.883382,
+      "logloss": 0.480016,
+      "brier": 0.154072,
+      "positive_rate": 0.503749
+    },
+    "validation": {
+      "rows": 2520,
+      "accuracy": 0.672222,
+      "precision": 0.655634,
+      "recall": 0.734227,
+      "f1": 0.692708,
+      "auc": 0.747765,
+      "logloss": 0.595286,
+      "brier": 0.205049,
+      "positive_rate": 0.503175
+    },
+    "test": {
+      "rows": 2520,
+      "accuracy": 0.655952,
+      "precision": 0.735032,
+      "recall": 0.466828,
+      "f1": 0.571004,
+      "auc": 0.742158,
+      "logloss": 0.615063,
+      "brier": 0.213004,
+      "positive_rate": 0.490476
+    }
+  },
+  "split": {
+    "target": "label_vol_high_5d",
+    "train_rows": 11736,
+    "validation_rows": 2520,
+    "test_rows": 2520,
+    "train_start": "20240515",
+    "train_end": "20250915",
+    "validation_start": "20250916",
+    "validation_end": "20251229",
+    "test_start": "20251230",
+    "test_end": "20260413"
+  }
+}

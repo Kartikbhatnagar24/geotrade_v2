@@ -57,14 +57,24 @@ def get_forecast(country_iso: str):
     iso = country_iso.upper()
     db  = get_db()
 
+    # The latest tension date drives cache validity — if new signals have landed
+    # since the cached forecast was computed, the cache is stale regardless of TTL.
+    latest_signal = db[settings.COL_DAILY_SIGNALS].find_one(
+        {"iso": iso}, {"date": 1, "_id": 0}, sort=[("date", -1)]
+    )
+    latest_date = (latest_signal or {}).get("date", "")
+
     # ── 1. Try cache ──────────────────────────────────────────
     cached = db[settings.COL_TENSION_FORECASTS].find_one(
         {"iso": iso}, sort=[("computed_at", -1)]
     )
     if cached and _is_fresh(cached):
-        cached.pop("_id", None)
-        cached["from_cache"] = True
-        return cached
+        history_dates = cached.get("history_dates") or []
+        cache_latest  = history_dates[-1] if history_dates else ""
+        if cache_latest == latest_date:
+            cached.pop("_id", None)
+            cached["from_cache"] = True
+            return cached
 
     # ── 2. Fetch history ──────────────────────────────────────
     history = fetch_country_history(db, iso)

@@ -4,9 +4,8 @@ pipeline/nlp/__init__.py
 Public API for the NLP pipeline.
 
 classify_event / analyze_sentiment / neg_score are loaded lazily
-so that importing this package (e.g. by features.py calling
-classify_news_type from classifier.py) does NOT require torch or
-transformers to be installed.
+so that importing this package does NOT require torch or
+transformers to be installed at import time.
 """
 
 from pipeline.nlp.ner import extract_countries

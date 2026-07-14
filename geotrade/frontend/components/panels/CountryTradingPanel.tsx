@@ -1,6 +1,4 @@
 // frontend/components/panels/CountryTradingPanel.tsx
-// Trading analysis drawer — slides in when a country is selected.
-// Tabs: 📰 News | 💹 Signals | 📈 Forecast | 🤖 AI
 
 import { useEffect, useState } from "react";
 import type {
@@ -10,280 +8,372 @@ import type {
 } from "@/types";
 import { fetchTradingSignals, fetchForecast, fetchBriefing } from "@/lib/api";
 
-// ── Shared micro-components ────────────────────────────────────────────────
+// ── Color helpers ───────────────────────────────────────────────────────────
 
-function TensionBar({ score }: { score: number }) {
-  const pct   = Math.round(score * 100);
-  const color = score >= 0.65 ? "#ef4444" : score >= 0.35 ? "#f59e0b" : "#22c55e";
-  return (
-    <div className="w-full bg-white/5 rounded-full h-1.5 mt-1">
-      <div
-        className="h-1.5 rounded-full transition-all duration-700"
-        style={{ width: `${pct}%`, background: color }}
-      />
-    </div>
-  );
-}
+const T_COLOR = (label: string) =>
+  label === "high" ? "var(--signal-high)" :
+  label === "medium" ? "var(--signal-mid)" : "var(--signal-low)";
 
-function DirectionBadge({ dir }: { dir: "LONG" | "SHORT" | "WATCH" }) {
-  const cfg = {
-    LONG:  { bg: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30", icon: "↑" },
-    SHORT: { bg: "bg-red-500/15 text-red-400 border-red-500/30",             icon: "↓" },
-    WATCH: { bg: "bg-amber-500/15 text-amber-400 border-amber-500/30",       icon: "◎" },
-  }[dir];
-  return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-mono font-bold ${cfg.bg}`}>
-      {cfg.icon} {dir}
-    </span>
-  );
-}
+const DIR_CFG = {
+  increase: {
+    color: "var(--signal-low)",
+    bg: "rgba(0,200,74,0.07)",
+    border: "rgba(0,200,74,0.2)",
+    arrow: "↑",
+    label: "PRICE UP",
+    sublabel: "likely higher in 3 days",
+  },
+  decrease: {
+    color: "var(--signal-high)",
+    bg: "rgba(240,40,40,0.07)",
+    border: "rgba(240,40,40,0.2)",
+    arrow: "↓",
+    label: "PRICE DOWN",
+    sublabel: "likely lower in 3 days",
+  },
+  uncertain: {
+    color: "var(--signal-mid)",
+    bg: "rgba(232,144,32,0.07)",
+    border: "rgba(232,144,32,0.2)",
+    arrow: "→",
+    label: "UNCLEAR",
+    sublabel: "mixed directional signal",
+  },
+};
 
-function NewsTypePill({ type }: { type: string }) {
-  const colorMap: Record<string, string> = {
-    conflict:     "bg-red-500/20 text-red-300",
-    military:     "bg-orange-500/20 text-orange-300",
-    sanctions:    "bg-purple-500/20 text-purple-300",
-    economic:     "bg-blue-500/20 text-blue-300",
-    diplomatic:   "bg-cyan-500/20 text-cyan-300",
-    humanitarian: "bg-pink-500/20 text-pink-300",
-    other:        "bg-white/10 text-white/50",
-  };
-  return (
-    <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded uppercase tracking-wider ${colorMap[type] ?? colorMap.other}`}>
-      {type}
-    </span>
-  );
-}
+const VOL_CFG = {
+  high: {
+    color: "var(--signal-high)",
+    bg: "rgba(240,40,40,0.07)",
+    border: "rgba(240,40,40,0.2)",
+    icon: "▲▲",
+    label: "HIGH VOL",
+    sublabel: "large swings expected 5d",
+  },
+  low: {
+    color: "var(--signal-low)",
+    bg: "rgba(0,200,74,0.07)",
+    border: "rgba(0,200,74,0.2)",
+    icon: "▼▼",
+    label: "LOW VOL",
+    sublabel: "calm market expected 5d",
+  },
+  neutral: {
+    color: "var(--signal-mid)",
+    bg: "rgba(232,144,32,0.07)",
+    border: "rgba(232,144,32,0.2)",
+    icon: "▬▬",
+    label: "MIXED",
+    sublabel: "vol regime unclear 5d",
+  },
+};
 
-function SentimentPill({ label, score }: { label?: string; score?: number }) {
-  if (!label) return null;
-  const lc = label.toLowerCase();
-  const cfg =
-    lc === "negative" ? "bg-red-500/15 text-red-400 border-red-500/25" :
-    lc === "positive" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/25" :
-                        "bg-white/8 text-white/40 border-white/10";
-  const icon = lc === "negative" ? "▼" : lc === "positive" ? "▲" : "–";
-  return (
-    <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border text-[8px] font-mono ${cfg}`}>
-      {icon} {label.slice(0, 3)}
-      {score != null && <span className="opacity-60 ml-0.5">{Math.round(score * 100)}</span>}
-    </span>
-  );
-}
-
-function IntensityDot({ score }: { score?: number }) {
-  if (score == null) return null;
-  const color =
-    score >= 0.5 ? "#ef4444" :
-    score >= 0.25 ? "#f59e0b" : "rgba(255,255,255,0.2)";
-  return (
-    <span
-      title={`Intensity: ${Math.round(score * 100)}%`}
-      className="inline-block w-1.5 h-1.5 rounded-full shrink-0 mt-0.5"
-      style={{ background: color, boxShadow: score >= 0.5 ? `0 0 4px ${color}` : "none" }}
-    />
-  );
-}
-
-function RiskBadge({ level }: { level: string }) {
-  const cfg: Record<string, string> = {
-    high:   "text-red-400 bg-red-500/15 border-red-500/30 animate-pulse",
-    medium: "text-amber-400 bg-amber-500/15 border-amber-500/30",
-    low:    "text-emerald-400 bg-emerald-500/15 border-emerald-500/30",
-    HIGH:   "text-red-400 bg-red-500/15 border-red-500/30 animate-pulse",
-    MEDIUM: "text-amber-400 bg-amber-500/15 border-amber-500/30",
-    LOW:    "text-emerald-400 bg-emerald-500/15 border-emerald-500/30",
-  };
-  return (
-    <span className={`inline-flex items-center px-2.5 py-1 rounded border text-[11px] font-mono font-bold ${cfg[level] ?? cfg.medium}`}>
-      ⚠ RISK: {level.toUpperCase()}
-    </span>
-  );
-}
-
-function ConvictionStars({ n }: { n: number }) {
-  return (
-    <span className="font-mono text-[11px] tracking-[-1px]">
-      {Array.from({ length: 5 }, (_, i) => (
-        <span key={i} style={{ color: i < n ? "#f59e0b" : "rgba(255,255,255,0.12)" }}>★</span>
-      ))}
-    </span>
-  );
-}
-
-function AssetClassIcon({ name }: { name: string }) {
-  const icons: Record<string, string> = {
-    "Safe Havens":    "🛡",
-    "Energy/Oil":     "⛽",
-    "Defense":        "🎯",
-    "Semiconductors": "💾",
-    "Agriculture":    "🌾",
-    "Local Equity":   "📊",
-    "FX / Dollar":    "💱",
-  };
-  return <span className="text-[13px]">{icons[name] ?? "📌"}</span>;
-}
+// ── Spinner ─────────────────────────────────────────────────────────────────
 
 function Spinner({ color }: { color: string }) {
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-3 text-white/30">
+    <div className="flex flex-col items-center justify-center h-full gap-3" style={{ color: "rgba(255,255,255,0.2)" }}>
       <div
-        className="w-8 h-8 rounded-full border-2 border-white/10"
-        style={{ borderTopColor: color, animation: "spin 1s linear infinite" }}
+        className="w-7 h-7 rounded-full border-2"
+        style={{
+          borderColor: "rgba(255,255,255,0.08)",
+          borderTopColor: color,
+          animation: "spin 0.9s linear infinite",
+        }}
       />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      <p className="text-[10px] font-mono">Loading…</p>
+      <p className="font-mono text-[10px] tracking-widest">LOADING</p>
     </div>
   );
 }
 
-// ── Tab: News ──────────────────────────────────────────────────────────────
+// ── Dual ML Prediction card ─────────────────────────────────────────────────
 
-function NewsTab({ news }: { news: NewsItem[] }) {
-  if (!news.length)
-    return <p className="text-xs text-white/40 text-center py-6">No recent news found for this country.</p>;
+function DualMLCard({ prediction }: { prediction: TradingPrediction }) {
+  const isRuleBased = prediction.model_source === "rule-based";
+
+  const dir   = prediction.direction ?? prediction.vix_direction ?? "uncertain";
+  const dirP  = prediction.direction_prob ?? prediction.confidence ?? 0;
+  const dirPct= prediction.direction_pct ?? prediction.confidence_pct ?? `${Math.round(dirP * 100)}%`;
+  const dirAuc= prediction.direction_auc;
+
+  const vol   = prediction.vol_level;
+  const volP  = prediction.vol_prob ?? 0;
+  const volPct= prediction.vol_pct ?? `${Math.round(volP * 100)}%`;
+  const volAuc= prediction.vol_auc;
+
+  const dCfg  = DIR_CFG[dir as keyof typeof DIR_CFG] ?? DIR_CFG.uncertain;
+  const vCfg  = vol ? (VOL_CFG[vol as keyof typeof VOL_CFG] ?? VOL_CFG.neutral) : null;
 
   return (
-    <div className="flex flex-col gap-2.5">
-      {news.map((item, i) => (
-        <div key={i} className="bg-white/5 rounded-lg p-3 border border-white/5 hover:border-white/10 transition-colors">
-          {/* Row 1: type pill + sentiment + intensity dot + date */}
-          <div className="flex items-center justify-between gap-1.5 mb-1.5">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <NewsTypePill type={item.news_type} />
-              <SentimentPill label={item.sentiment_label} score={item.sentiment_score} />
+    <div className="flex flex-col gap-2">
+      {/* Header row */}
+      <div className="flex items-center justify-between">
+        <span className="font-mono text-[9px] tracking-[0.2em]" style={{ color: "var(--geo-text-2)" }}>
+          MODEL PREDICTIONS
+        </span>
+        <span
+          className="font-mono text-[8px] px-1.5 py-0.5 rounded tracking-wider"
+          style={{
+            color: isRuleBased ? "var(--signal-mid)" : "var(--accent)",
+            background: isRuleBased ? "rgba(232,144,32,0.1)" : "var(--accent-dim)",
+            border: `1px solid ${isRuleBased ? "rgba(232,144,32,0.25)" : "var(--accent-glow)"}`,
+          }}
+        >
+          {isRuleBased ? "RULE-BASED" : "ML ENSEMBLE"}
+        </span>
+      </div>
+
+      {/* Cards row */}
+      <div className="grid grid-cols-2 gap-2">
+        {/* Direction card */}
+        <div
+          className="rounded-xl p-3 relative scanline-overlay"
+          style={{ background: dCfg.bg, border: `1px solid ${dCfg.border}` }}
+        >
+          <p className="font-mono text-[8px] tracking-[0.18em] mb-2" style={{ color: `${dCfg.color}99` }}>
+            3D DIRECTION
+          </p>
+          <div className="flex items-baseline gap-1.5 mb-1">
+            <span
+              className="font-mono text-2xl font-bold leading-none"
+              style={{ color: dCfg.color }}
+            >
+              {dCfg.arrow}
+            </span>
+            <span
+              className="font-mono text-[11px] font-bold leading-none"
+              style={{ color: dCfg.color }}
+            >
+              {dCfg.label}
+            </span>
+          </div>
+          <p className="font-mono text-[9px] mb-2.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+            {dCfg.sublabel}
+          </p>
+          {/* Confidence bar */}
+          <div>
+            <div className="flex justify-between mb-1">
+              <span className="font-mono text-[8px]" style={{ color: "rgba(255,255,255,0.3)" }}>CONF</span>
+              <span className="font-mono text-[8px] font-bold" style={{ color: dCfg.color }}>{dirPct}</span>
             </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <IntensityDot score={item.intensity_score} />
-              <span className="text-[9px] text-white/35 font-mono">
-                {item.date ? item.date.slice(0, 10) : "—"}
+            <div className="h-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.08)" }}>
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: dirPct,
+                  background: dCfg.color,
+                  opacity: 0.8,
+                  transition: "width 0.7s ease",
+                }}
+              />
+            </div>
+            {dirAuc && (
+              <p className="font-mono text-[7px] mt-1" style={{ color: "rgba(255,255,255,0.2)" }}>
+                AUC {dirAuc.toFixed(3)}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Volatility card */}
+        {vCfg ? (
+          <div
+            className="rounded-xl p-3 relative scanline-overlay"
+            style={{ background: vCfg.bg, border: `1px solid ${vCfg.border}` }}
+          >
+            <p className="font-mono text-[8px] tracking-[0.18em] mb-2" style={{ color: `${vCfg.color}99` }}>
+              5D VOLATILITY
+            </p>
+            <div className="flex items-baseline gap-1.5 mb-1">
+              <span
+                className="font-mono text-[18px] font-bold leading-none"
+                style={{ color: vCfg.color }}
+              >
+                {vCfg.icon}
               </span>
             </div>
-          </div>
-
-          {/* Headline */}
-          {item.url ? (
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-white/80 hover:text-white leading-relaxed line-clamp-2 block transition-colors"
+            <p
+              className="font-mono text-[11px] font-bold mb-1"
+              style={{ color: vCfg.color }}
             >
-              {item.title}
-            </a>
-          ) : (
-            <p className="text-xs text-white/80 leading-relaxed line-clamp-2">{item.title}</p>
-          )}
+              {vCfg.label}
+            </p>
+            <p className="font-mono text-[9px] mb-2.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+              {vCfg.sublabel}
+            </p>
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className="font-mono text-[8px]" style={{ color: "rgba(255,255,255,0.3)" }}>CONF</span>
+                <span className="font-mono text-[8px] font-bold" style={{ color: vCfg.color }}>{volPct}</span>
+              </div>
+              <div className="h-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.08)" }}>
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: volPct,
+                    background: vCfg.color,
+                    opacity: 0.8,
+                    transition: "width 0.7s ease",
+                  }}
+                />
+              </div>
+              {volAuc && (
+                <p className="font-mono text-[7px] mt-1" style={{ color: "rgba(255,255,255,0.2)" }}>
+                  AUC {volAuc.toFixed(3)}
+                </p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div
+            className="rounded-xl p-3 flex flex-col items-center justify-center"
+            style={{
+              background: "rgba(255,255,255,0.02)",
+              border: "1px solid rgba(255,255,255,0.06)",
+            }}
+          >
+            <p className="font-mono text-[8px] tracking-[0.18em] mb-2" style={{ color: "var(--geo-text)" }}>
+              5D VOLATILITY
+            </p>
+            <p className="font-mono text-[9px] text-center leading-relaxed" style={{ color: "rgba(255,255,255,0.2)" }}>
+              Train volatility model to unlock
+            </p>
+          </div>
+        )}
+      </div>
 
-          {/* Source */}
-          {item.source && (
-            <p className="text-[9px] text-white/30 mt-1 font-mono">{item.source.split(":").pop()}</p>
-          )}
-        </div>
-      ))}
+      {/* Rule-based note */}
+      {isRuleBased && prediction.no_data_reason && (
+        <p className="font-mono text-[9px] leading-relaxed" style={{ color: "rgba(255,255,255,0.3)" }}>
+          {prediction.no_data_reason}
+        </p>
+      )}
     </div>
   );
 }
 
-// ── Tab: Signals (Stocks + Market Intelligence) ────────────────────────────
+// ── Stance card ─────────────────────────────────────────────────────────────
 
-function PositioningSummaryCard({ summary }: { summary: string }) {
-  const upper = summary.toUpperCase();
-  const isDefensive   = upper.startsWith("DEFENSIVE");
-  const isCautious    = upper.startsWith("CAUTIOUS");
-  const isConstructive= upper.startsWith("CONSTRUCTIVE");
-
-  const color =
-    isDefensive    ? "#ef4444" :
-    isCautious     ? "#f59e0b" :
-    isConstructive ? "#22c55e" : "#94a3b8";
-
-  const bg =
-    isDefensive    ? "rgba(239,68,68,0.07)"  :
-    isCautious     ? "rgba(245,158,11,0.07)" :
-    isConstructive ? "rgba(34,197,94,0.07)"  : "rgba(255,255,255,0.04)";
-
+function StanceCard({ summary }: { summary: string }) {
+  const u = summary.toUpperCase();
+  const [color, bg] =
+    u.startsWith("DEFENSIVE")    ? ["var(--signal-high)", "rgba(240,40,40,0.06)"] :
+    u.startsWith("CAUTIOUS")     ? ["var(--signal-mid)",  "rgba(232,144,32,0.06)"] :
+    u.startsWith("CONSTRUCTIVE") ? ["var(--signal-low)",  "rgba(0,200,74,0.06)"] :
+                                   ["var(--geo-text-2)",  "rgba(255,255,255,0.03)"];
+  const [stance, ...rest] = summary.split(" — ");
   return (
     <div
-      className="rounded-xl p-3 border"
-      style={{ background: bg, borderColor: `${color}25` }}
+      className="rounded-xl px-3.5 py-3"
+      style={{ background: bg, border: `1px solid ${color}18` }}
     >
-      <p className="text-[9px] font-mono uppercase tracking-wider mb-1.5" style={{ color: `${color}99` }}>
-        Positioning
+      <p className="font-mono text-[8px] tracking-[0.2em] mb-1.5" style={{ color: "var(--geo-text)" }}>
+        STANCE
       </p>
-      <p className="text-xs font-mono leading-relaxed" style={{ color }}>
-        {summary}
+      <p className="font-mono text-xs leading-snug" style={{ color }}>
+        <span className="font-bold">{stance}</span>
+        {rest.length > 0 && (
+          <span style={{ color: "rgba(255,255,255,0.5)" }}> — {rest.join(" — ")}</span>
+        )}
       </p>
     </div>
   );
 }
+
+// ── Market signal card ───────────────────────────────────────────────────────
 
 function MarketSignalCard({ signal }: { signal: MarketSignal }) {
-  const dirColor =
-    signal.direction === "LONG"  ? "#22c55e" :
-    signal.direction === "SHORT" ? "#ef4444" : "#f59e0b";
+  const [color, bg, border] =
+    signal.direction === "LONG"  ? ["var(--signal-low)",  "rgba(0,200,74,0.06)",   "rgba(0,200,74,0.18)"] :
+    signal.direction === "SHORT" ? ["var(--signal-high)", "rgba(240,40,40,0.06)",  "rgba(240,40,40,0.18)"] :
+                                   ["var(--signal-mid)",  "rgba(232,144,32,0.06)", "rgba(232,144,32,0.18)"];
 
-  const dirBg =
-    signal.direction === "LONG"  ? "rgba(34,197,94,0.08)"  :
-    signal.direction === "SHORT" ? "rgba(239,68,68,0.08)"  : "rgba(245,158,11,0.08)";
+  const ICONS: Record<string, string> = {
+    "Safe Havens":          "◈",
+    "Energy / Oil":         "⬡",
+    "Defense & Aerospace":  "◉",
+    "Semiconductors / Tech":"⬡",
+    "Agriculture":          "◈",
+    "Local Equity":         "◎",
+    "FX / Currencies":      "◈",
+  };
+
+  const arrow = signal.direction === "LONG" ? "↑ BUY" : signal.direction === "SHORT" ? "↓ SELL" : "◎ WATCH";
 
   return (
     <div
-      className="rounded-xl p-3 border transition-colors"
-      style={{
-        background:   dirBg,
-        borderColor:  `${dirColor}20`,
-      }}
+      className="rounded-xl px-3.5 py-3"
+      style={{ background: bg, border: `1px solid ${border}` }}
     >
-      {/* Header row */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <AssetClassIcon name={signal.asset_class} />
-          <span className="text-[11px] font-mono font-semibold text-white/80">
+          <span className="font-mono text-sm" style={{ color: `${color}99` }}>
+            {ICONS[signal.asset_class] ?? "◈"}
+          </span>
+          <span className="font-mono text-[11px] font-semibold" style={{ color: "rgba(255,255,255,0.80)" }}>
             {signal.asset_class}
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <ConvictionStars n={signal.conviction} />
-          <DirectionBadge dir={signal.direction} />
+          {/* Conviction dots */}
+          <span className="flex gap-0.5">
+            {Array.from({ length: 5 }, (_, i) => (
+              <span
+                key={i}
+                className="w-1.5 h-1.5 rounded-full"
+                style={{ background: i < signal.conviction ? color : "rgba(255,255,255,0.1)" }}
+              />
+            ))}
+          </span>
+          <span
+            className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded"
+            style={{ color, background: `${color}15`, border: `1px solid ${color}30` }}
+          >
+            {arrow}
+          </span>
         </div>
       </div>
-
       {/* Tickers */}
       <div className="flex flex-wrap gap-1 mb-2">
         {signal.tickers.map((t) => (
           <span
             key={t}
-            className="text-[9px] font-mono px-1.5 py-0.5 rounded"
-            style={{
-              color:        dirColor,
-              background:   `${dirColor}12`,
-              border:       `1px solid ${dirColor}30`,
-            }}
+            className="font-mono text-[9px] px-1.5 py-0.5 rounded"
+            style={{ color, background: `${color}10`, border: `1px solid ${color}25` }}
           >
             {t}
           </span>
         ))}
       </div>
-
-      {/* Rationale */}
-      <p className="text-[10px] text-white/50 leading-relaxed">{signal.rationale}</p>
+      <p className="font-mono text-[9px] leading-relaxed" style={{ color: "rgba(255,255,255,0.45)" }}>
+        {signal.rationale}
+      </p>
     </div>
   );
 }
 
-function KeyRisksCard({ risks }: { risks: string[] }) {
+// ── Key risks ────────────────────────────────────────────────────────────────
+
+function KeyRisks({ risks }: { risks: string[] }) {
   if (!risks.length) return null;
   return (
-    <div className="bg-white/5 rounded-xl p-3 border border-red-500/15">
-      <p className="text-[9px] text-red-400/70 font-mono uppercase tracking-wider mb-2">
-        ⚡ Key Risks
+    <div
+      className="rounded-xl px-3.5 py-3"
+      style={{ background: "rgba(240,40,40,0.04)", border: "1px solid rgba(240,40,40,0.14)" }}
+    >
+      <p className="font-mono text-[8px] tracking-[0.2em] mb-2.5" style={{ color: "rgba(240,40,40,0.6)" }}>
+        KEY RISKS
       </p>
       <div className="flex flex-col gap-1.5">
         {risks.map((r, i) => (
           <div key={i} className="flex items-start gap-2">
-            <span className="text-red-500/50 text-[10px] mt-0.5 shrink-0">▸</span>
-            <p className="text-[10px] text-white/55 leading-relaxed">{r}</p>
+            <span className="font-mono text-[9px] mt-0.5 shrink-0" style={{ color: "rgba(240,40,40,0.45)" }}>
+              ▸
+            </span>
+            <p className="font-mono text-[9px] leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
+              {r}
+            </p>
           </div>
         ))}
       </div>
@@ -291,28 +381,122 @@ function KeyRisksCard({ risks }: { risks: string[] }) {
   );
 }
 
-function SignalsTab({
-  signals,
+// ── News tab ─────────────────────────────────────────────────────────────────
+
+const NEWS_TYPE_COLOR: Record<string, string> = {
+  conflict:     "rgba(240,40,40,0.7)",
+  military:     "rgba(220,100,30,0.7)",
+  sanctions:    "rgba(160,80,220,0.7)",
+  economic:     "rgba(40,140,240,0.7)",
+  diplomatic:   "rgba(0,180,200,0.7)",
+  humanitarian: "rgba(220,80,140,0.7)",
+  elections:    "rgba(80,200,120,0.7)",
+  other:        "rgba(100,120,150,0.7)",
+};
+
+function NewsTab({ news }: { news: NewsItem[] }) {
+  if (!news.length)
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="font-mono text-[10px]" style={{ color: "var(--geo-text)" }}>
+          No recent articles found.
+        </p>
+      </div>
+    );
+
+  return (
+    <div className="flex flex-col gap-2">
+      {news.map((item, i) => {
+        const typeColor = NEWS_TYPE_COLOR[item.news_type] ?? NEWS_TYPE_COLOR.other;
+        const sentIcon =
+          item.sentiment_label?.toLowerCase() === "negative" ? "▼" :
+          item.sentiment_label?.toLowerCase() === "positive" ? "▲" : null;
+
+        return (
+          <div
+            key={i}
+            className="rounded-xl px-3.5 py-3"
+            style={{
+              background: "rgba(255,255,255,0.025)",
+              border: "1px solid rgba(255,255,255,0.05)",
+            }}
+          >
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <span
+                className="font-mono text-[8px] px-1.5 py-0.5 rounded uppercase tracking-wider"
+                style={{ color: typeColor, background: `${typeColor}15`, border: `1px solid ${typeColor}30` }}
+              >
+                {item.news_type}
+              </span>
+              <div className="flex items-center gap-1.5">
+                {sentIcon && (
+                  <span
+                    className="font-mono text-[8px]"
+                    style={{ color: sentIcon === "▼" ? "var(--signal-high)" : "var(--signal-low)" }}
+                  >
+                    {sentIcon}
+                  </span>
+                )}
+                <span className="font-mono text-[9px]" style={{ color: "var(--geo-text)" }}>
+                  {item.date ? item.date.slice(5) : "—"}
+                </span>
+              </div>
+            </div>
+
+            {item.url ? (
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block font-mono text-[10px] leading-relaxed line-clamp-2 transition-colors"
+                style={{ color: "rgba(255,255,255,0.72)" }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.95)")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.72)")}
+              >
+                {item.title}
+              </a>
+            ) : (
+              <p
+                className="font-mono text-[10px] leading-relaxed line-clamp-2"
+                style={{ color: "rgba(255,255,255,0.72)" }}
+              >
+                {item.title}
+              </p>
+            )}
+
+            {item.source && (
+              <p className="font-mono text-[8px] mt-1.5" style={{ color: "var(--geo-text)" }}>
+                {item.source.split(":").pop()?.trim()}
+              </p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Market / Signals tab ─────────────────────────────────────────────────────
+
+function MarketTab({
   prediction,
 }: {
-  signals: StockSignal[];
   prediction: TradingPrediction | null;
 }) {
-  const marketSignals = prediction?.market_signals ?? [];
-  const keyRisks      = prediction?.key_risks ?? [];
-  const positioning   = prediction?.positioning_summary ?? "";
+  if (!prediction) return null;
+  const marketSignals = prediction.market_signals ?? [];
+  const keyRisks      = prediction.key_risks ?? [];
+  const positioning   = prediction.positioning_summary ?? "";
 
   return (
     <div className="flex flex-col gap-3">
+      <DualMLCard prediction={prediction} />
+      {positioning && <StanceCard summary={positioning} />}
 
-      {/* Positioning summary */}
-      {positioning && <PositioningSummaryCard summary={positioning} />}
-
-      {/* Market Signals */}
       {marketSignals.length > 0 && (
         <div className="flex flex-col gap-2">
-          <p className="text-[9px] text-white/35 font-mono uppercase tracking-wider px-0.5">
-            Market Signals — {marketSignals.length} asset classes
+          <p className="font-mono text-[8px] tracking-[0.2em] px-0.5" style={{ color: "var(--geo-text)" }}>
+            ASSET CLASS SIGNALS — {marketSignals.length} CATEGORIES
           </p>
           {marketSignals.map((sig, i) => (
             <MarketSignalCard key={i} signal={sig} />
@@ -320,122 +504,61 @@ function SignalsTab({
         </div>
       )}
 
-      {/* Key Risks */}
-      <KeyRisksCard risks={keyRisks} />
+      <KeyRisks risks={keyRisks} />
 
-      {/* Divider + individual stock prices */}
-      {signals.length > 0 && (
-        <>
-          <div className="flex items-center gap-2 mt-1">
-            <div className="flex-1 h-px bg-white/8" />
-            <p className="text-[9px] text-white/25 font-mono uppercase tracking-wider shrink-0">
-              Live Prices
-            </p>
-            <div className="flex-1 h-px bg-white/8" />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            {signals.map((s, i) => (
-              <div
-                key={i}
-                className="bg-white/5 rounded-lg px-3 py-2 border border-white/5 hover:border-white/10 transition-colors flex items-center justify-between"
-              >
-                <div className="flex-1 min-w-0 pr-2">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="font-mono font-bold text-xs text-white">{s.ticker}</span>
-                    <span className="text-[8px] text-white/30 font-mono truncate">{s.type}</span>
-                  </div>
-                  <p className="text-[9px] text-white/40 truncate">{s.name}</p>
-                </div>
-                <div className="text-right shrink-0">
-                  {s.price != null && (
-                    <p className="text-xs font-mono text-white/80">${s.price.toFixed(2)}</p>
-                  )}
-                  {s.change_5d != null && (
-                    <p className={`text-[9px] font-mono ${s.change_5d >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                      {s.change_5d >= 0 ? "+" : ""}{s.change_5d.toFixed(2)}% 5d
-                    </p>
-                  )}
-                  {s.error && <p className="text-[8px] text-white/20 font-mono">n/a</p>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* Fallback if no signals at all */}
-      {marketSignals.length === 0 && signals.length === 0 && (
-        <p className="text-xs text-white/40 text-center py-6">No market signals available.</p>
+      {marketSignals.length === 0 && (
+        <p className="font-mono text-[10px] text-center py-6" style={{ color: "var(--geo-text)" }}>
+          No market signals available.
+        </p>
       )}
     </div>
   );
 }
 
-// ── Tab: Forecast ──────────────────────────────────────────────────────────
+// ── Forecast tab ─────────────────────────────────────────────────────────────
 
 function MomentumStrip({ momentum }: { momentum: TensionMomentum }) {
   const accelColor =
-    momentum.acceleration === "rising"  ? "#ef4444" :
-    momentum.acceleration === "falling" ? "#22c55e" : "#f59e0b";
-
-  const accelIcon =
+    momentum.acceleration === "rising"  ? "var(--signal-high)" :
+    momentum.acceleration === "falling" ? "var(--signal-low)" : "var(--signal-mid)";
+  const accelArrow =
     momentum.acceleration === "rising"  ? "↑" :
     momentum.acceleration === "falling" ? "↓" : "→";
 
-  const fmt = (v: number) =>
-    `${v > 0 ? "+" : ""}${(v * 100).toFixed(1)}pts`;
-
-  const color3d = momentum.change_3d > 0 ? "#ef4444" : momentum.change_3d < 0 ? "#22c55e" : "#94a3b8";
-  const color7d = momentum.change_7d > 0 ? "#ef4444" : momentum.change_7d < 0 ? "#22c55e" : "#94a3b8";
-
-  const strengthBg =
-    momentum.signal_strength === "strong"   ? "rgba(239,68,68,0.12)"  :
-    momentum.signal_strength === "moderate" ? "rgba(245,158,11,0.12)" : "rgba(255,255,255,0.06)";
+  const fmt = (v: number) => `${v > 0 ? "+" : ""}${(v * 100).toFixed(1)}`;
+  const c3 = momentum.change_3d > 0 ? "var(--signal-high)" : momentum.change_3d < 0 ? "var(--signal-low)" : "var(--geo-text-2)";
+  const c7 = momentum.change_7d > 0 ? "var(--signal-high)" : momentum.change_7d < 0 ? "var(--signal-low)" : "var(--geo-text-2)";
 
   return (
-    <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-      <p className="text-[9px] text-white/35 font-mono uppercase tracking-wider mb-2.5">
-        Tension Momentum
+    <div
+      className="rounded-xl px-3.5 py-3"
+      style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}
+    >
+      <p className="font-mono text-[8px] tracking-[0.2em] mb-3" style={{ color: "var(--geo-text)" }}>
+        TENSION MOMENTUM
       </p>
-      <div className="grid grid-cols-3 gap-2">
-        {/* 3-day change */}
-        <div className="text-center">
-          <p className="text-[8px] text-white/30 font-mono mb-1">3-Day Δ</p>
-          <p className="text-sm font-mono font-bold" style={{ color: color3d }}>
-            {fmt(momentum.change_3d)}
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <div>
+          <p className="font-mono text-[8px] mb-1" style={{ color: "var(--geo-text)" }}>3D Δ</p>
+          <p className="font-mono text-sm font-bold" style={{ color: c3 }}>{fmt(momentum.change_3d)}</p>
+        </div>
+        <div>
+          <p className="font-mono text-[8px] mb-1" style={{ color: "var(--geo-text)" }}>7D Δ</p>
+          <p className="font-mono text-sm font-bold" style={{ color: c7 }}>{fmt(momentum.change_7d)}</p>
+        </div>
+        <div>
+          <p className="font-mono text-[8px] mb-1" style={{ color: "var(--geo-text)" }}>TREND</p>
+          <p className="font-mono text-sm font-bold" style={{ color: accelColor }}>
+            {accelArrow} {momentum.acceleration.toUpperCase()}
           </p>
         </div>
-        {/* 7-day change */}
-        <div className="text-center">
-          <p className="text-[8px] text-white/30 font-mono mb-1">7-Day Δ</p>
-          <p className="text-sm font-mono font-bold" style={{ color: color7d }}>
-            {fmt(momentum.change_7d)}
-          </p>
-        </div>
-        {/* Trend / acceleration */}
-        <div className="text-center">
-          <p className="text-[8px] text-white/30 font-mono mb-1">Trend</p>
-          <p className="text-sm font-mono font-bold" style={{ color: accelColor }}>
-            {accelIcon} {momentum.acceleration}
-          </p>
-        </div>
-      </div>
-      {/* Signal strength pill */}
-      <div className="flex justify-center mt-2.5">
-        <span
-          className="text-[9px] font-mono uppercase px-2 py-0.5 rounded-full"
-          style={{ background: strengthBg, color: accelColor, border: `1px solid ${accelColor}25` }}
-        >
-          {momentum.signal_strength} signal
-        </span>
       </div>
     </div>
   );
 }
 
 function ForecastSparkline({ forecast, momentum }: { forecast: ForecastData; momentum?: TensionMomentum }) {
-  const W = 294, H = 80, PAD = 8;
+  const W = 310, H = 76, PAD = 10;
 
   const allScores = [...forecast.history_scores, ...forecast.predictions];
   const allDates  = [...forecast.history_dates,  ...forecast.forecast_dates];
@@ -444,101 +567,95 @@ function ForecastSparkline({ forecast, momentum }: { forecast: ForecastData; mom
 
   const minV = Math.min(...allScores, 0);
   const maxV = Math.max(...allScores, 1);
-  const range = maxV - minV || 1;
+  const rng  = maxV - minV || 1;
 
   const toX = (i: number) => PAD + (i / (total - 1)) * (W - PAD * 2);
-  const toY = (v: number) => H - PAD - ((v - minV) / range) * (H - PAD * 2);
+  const toY = (v: number) => H - PAD - ((v - minV) / rng) * (H - PAD * 2);
 
-  const historyPoints  = forecast.history_scores.map((s, i) => `${toX(i)},${toY(s)}`);
-  const forecastPoints = forecast.predictions.map((s, i) =>
-    `${toX(splitIdx - 1 + i + 1)},${toY(s)}`
-  );
+  const histPts  = forecast.history_scores.map((s, i) => `${toX(i)},${toY(s)}`);
+  const fcastPts = forecast.predictions.map((s, i) => `${toX(splitIdx + i)},${toY(s)}`);
 
-  const histPath    = `M ${historyPoints.join(" L ")}`;
-  const lastHistX   = toX(splitIdx - 1);
-  const lastHistY   = toY(forecast.history_scores[forecast.history_scores.length - 1]);
-  const fcastPath   = `M ${lastHistX},${lastHistY} L ${forecastPoints.join(" L ")}`;
-  const todayX      = lastHistX;
+  const histPath  = `M ${histPts.join(" L ")}`;
+  const lastHX    = toX(splitIdx - 1);
+  const lastHY    = toY(forecast.history_scores[forecast.history_scores.length - 1]);
+  const fcastPath = `M ${lastHX},${lastHY} L ${fcastPts.join(" L ")}`;
 
   const dirColor =
-    forecast.direction === "escalating"    ? "#ef4444" :
-    forecast.direction === "de-escalating" ? "#22c55e" : "#f59e0b";
-
+    forecast.direction === "escalating"    ? "var(--signal-high)" :
+    forecast.direction === "de-escalating" ? "var(--signal-low)"  : "var(--signal-mid)";
   const dirArrow =
     forecast.direction === "escalating"    ? "↑" :
     forecast.direction === "de-escalating" ? "↓" : "→";
-
   const confColor =
-    forecast.confidence_level === "high"   ? "#22c55e" :
-    forecast.confidence_level === "medium" ? "#f59e0b" : "#ef4444";
+    forecast.confidence_level === "high"   ? "var(--signal-low)" :
+    forecast.confidence_level === "medium" ? "var(--signal-mid)" : "var(--signal-high)";
 
   return (
     <div className="flex flex-col gap-3">
-
-      {/* Momentum strip — shown at top of forecast if available */}
       {momentum && <MomentumStrip momentum={momentum} />}
 
       {/* Direction header */}
-      <div className="bg-white/5 rounded-xl p-3 border border-white/5 flex items-center justify-between">
+      <div
+        className="rounded-xl px-3.5 py-3 flex items-center justify-between"
+        style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}
+      >
         <div>
-          <p className="text-[9px] text-white/40 font-mono uppercase tracking-wider mb-1">
-            7-Day Tension Forecast
+          <p className="font-mono text-[8px] tracking-[0.2em] mb-1" style={{ color: "var(--geo-text)" }}>
+            7-DAY TENSION FORECAST
           </p>
-          <div className="flex items-center gap-2">
-            <span className="text-xl font-mono font-bold" style={{ color: dirColor }}>
-              {dirArrow}
+          <div className="flex items-baseline gap-2">
+            <span className="font-mono text-2xl font-bold" style={{ color: dirColor }}>{dirArrow}</span>
+            <span className="font-mono text-sm font-bold capitalize" style={{ color: dirColor }}>
+              {forecast.direction}
             </span>
-            <span className="text-sm font-mono font-bold" style={{ color: dirColor }}>
-              {forecast.direction.charAt(0).toUpperCase() + forecast.direction.slice(1)}
-            </span>
-            <span className="text-xs font-mono text-white/50">
+            <span className="font-mono text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
               {forecast.pct_change > 0 ? "+" : ""}{forecast.pct_change.toFixed(1)}%
             </span>
           </div>
         </div>
         <div className="text-right">
-          <p className="text-[9px] text-white/40 font-mono uppercase tracking-wider mb-1">Confidence</p>
-          <span className="text-xs font-mono font-bold uppercase" style={{ color: confColor }}>
+          <p className="font-mono text-[8px] tracking-[0.2em] mb-1" style={{ color: "var(--geo-text)" }}>
+            CONFIDENCE
+          </p>
+          <span className="font-mono text-xs font-bold uppercase" style={{ color: confColor }}>
             {forecast.confidence_level}
           </span>
         </div>
       </div>
 
-      {/* SVG Sparkline */}
-      <div className="bg-white/5 rounded-xl border border-white/5 overflow-hidden">
+      {/* Sparkline */}
+      <div
+        className="rounded-xl overflow-hidden"
+        style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}
+      >
         <svg width={W} height={H} style={{ display: "block" }}>
           {[0.25, 0.5, 0.75].map((v) => (
             <line
               key={v}
               x1={PAD} y1={toY(v)} x2={W - PAD} y2={toY(v)}
-              stroke="rgba(255,255,255,0.04)" strokeWidth="1"
+              stroke="rgba(255,255,255,0.035)" strokeWidth="1"
             />
           ))}
+          {/* Today divider */}
           <line
-            x1={todayX} y1={PAD} x2={todayX} y2={H - PAD}
-            stroke="rgba(255,255,255,0.15)" strokeWidth="1" strokeDasharray="3,3"
+            x1={lastHX} y1={PAD} x2={lastHX} y2={H - PAD}
+            stroke="rgba(255,255,255,0.12)" strokeWidth="1" strokeDasharray="3,3"
           />
-          <text x={todayX + 3} y={PAD + 7} fill="rgba(255,255,255,0.3)" fontSize="7" fontFamily="monospace">
-            today
+          <text x={lastHX + 4} y={PAD + 7} fill="rgba(255,255,255,0.25)" fontSize="7" fontFamily="Share Tech Mono, monospace">
+            NOW
           </text>
-          <path
-            d={histPath}
-            fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="1.5"
-            strokeLinecap="round" strokeLinejoin="round"
-          />
-          <path
-            d={fcastPath}
-            fill="none" stroke={dirColor} strokeWidth="1.5"
-            strokeDasharray="4,3" strokeLinecap="round" strokeLinejoin="round"
-            opacity="0.85"
-          />
+          {/* History line */}
+          <path d={histPath} fill="none" stroke="rgba(255,255,255,0.38)" strokeWidth="1.5"
+            strokeLinecap="round" strokeLinejoin="round" />
+          {/* Forecast area fill */}
           {forecast.predictions.length > 0 && (() => {
-            const pts = forecast.predictions.map((s, i) =>
-              `${toX(splitIdx + i)},${toY(s)}`
-            );
-            const areaPath = `M ${lastHistX},${H - PAD} L ${lastHistX},${lastHistY} L ${pts.join(" L ")} L ${toX(total - 1)},${H - PAD} Z`;
-            return <path d={areaPath} fill={dirColor} opacity="0.06" />;
+            const areaPath = `M ${lastHX},${H - PAD} L ${lastHX},${lastHY} L ${fcastPts.join(" L ")} L ${toX(total - 1)},${H - PAD} Z`;
+            return <path d={areaPath} fill={dirColor} opacity="0.07" />;
           })()}
+          {/* Forecast dashed line */}
+          <path d={fcastPath} fill="none" stroke={dirColor} strokeWidth="1.5"
+            strokeDasharray="4,3" strokeLinecap="round" strokeLinejoin="round" opacity="0.85" />
+          {/* End dot */}
           {forecast.predictions.length > 0 && (
             <circle
               cx={toX(total - 1)}
@@ -547,38 +664,42 @@ function ForecastSparkline({ forecast, momentum }: { forecast: ForecastData; mom
             />
           )}
         </svg>
-
-        <div className="flex justify-between px-2 pb-2 -mt-1">
-          <span className="text-[8px] text-white/25 font-mono">
+        <div className="flex justify-between px-3 pb-2 -mt-1">
+          <span className="font-mono text-[8px]" style={{ color: "var(--geo-text)" }}>
             {forecast.history_dates[0]?.slice(5) ?? ""}
           </span>
-          <span className="text-[8px] font-mono" style={{ color: dirColor, opacity: 0.7 }}>
+          <span className="font-mono text-[8px]" style={{ color: dirColor, opacity: 0.7 }}>
             +7d: {forecast.predictions[6]?.toFixed(2) ?? ""}
           </span>
         </div>
       </div>
 
-      {/* Score Trajectory */}
-      <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-        <p className="text-[9px] text-white/40 font-mono uppercase tracking-wider mb-2">Score Trajectory</p>
+      {/* Score trajectory */}
+      <div
+        className="rounded-xl px-3.5 py-3"
+        style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}
+      >
+        <p className="font-mono text-[8px] tracking-[0.2em] mb-2.5" style={{ color: "var(--geo-text)" }}>
+          SCORE TRAJECTORY
+        </p>
         <div className="flex items-center justify-between">
           <div className="text-center">
-            <p className="text-[9px] text-white/35 font-mono">Today</p>
-            <p className="text-sm font-mono font-bold text-white">
+            <p className="font-mono text-[8px] mb-1" style={{ color: "var(--geo-text)" }}>NOW</p>
+            <p className="font-mono text-base font-bold" style={{ color: "rgba(255,255,255,0.75)" }}>
               {Math.round(forecast.current_score * 100)}
             </p>
           </div>
-          <div className="flex-1 mx-3">
-            <div className="h-px bg-white/10 relative">
+          <div className="flex-1 mx-4">
+            <div className="h-px relative" style={{ background: "rgba(255,255,255,0.08)" }}>
               <div
-                className="absolute top-0 left-0 h-px"
-                style={{ width: "100%", background: `linear-gradient(to right, rgba(255,255,255,0.3), ${dirColor})` }}
+                className="absolute inset-0"
+                style={{ background: `linear-gradient(to right, rgba(255,255,255,0.2), ${dirColor})` }}
               />
             </div>
           </div>
           <div className="text-center">
-            <p className="text-[9px] text-white/35 font-mono">Day 7</p>
-            <p className="text-sm font-mono font-bold" style={{ color: dirColor }}>
+            <p className="font-mono text-[8px] mb-1" style={{ color: "var(--geo-text)" }}>DAY 7</p>
+            <p className="font-mono text-base font-bold" style={{ color: dirColor }}>
               {Math.round((forecast.predictions[6] ?? forecast.current_score) * 100)}
             </p>
           </div>
@@ -586,132 +707,165 @@ function ForecastSparkline({ forecast, momentum }: { forecast: ForecastData; mom
       </div>
 
       {/* Confidence note */}
-      <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-        <p className="text-[9px] text-white/40 font-mono uppercase tracking-wider mb-1">Confidence Note</p>
-        <p className="text-xs text-white/65 leading-relaxed">{forecast.confidence_note}</p>
-        <p className="text-[9px] text-white/25 font-mono mt-2">
-          R² = {forecast.confidence_r2.toFixed(3)} · {forecast.data_points_used} data points
+      <div
+        className="rounded-xl px-3.5 py-3"
+        style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}
+      >
+        <p className="font-mono text-[8px] tracking-[0.2em] mb-1.5" style={{ color: "var(--geo-text)" }}>
+          HOW RELIABLE IS THIS?
+        </p>
+        <p className="font-mono text-[10px] leading-relaxed" style={{ color: "rgba(255,255,255,0.58)" }}>
+          {forecast.confidence_note}
         </p>
       </div>
-
     </div>
   );
 }
 
-// ── Tab: Gemini AI Briefing ────────────────────────────────────────────────
+// ── AI Brief tab ─────────────────────────────────────────────────────────────
 
-function GeminiBriefingTab({ briefing }: { briefing: BriefingData }) {
+function BriefingTab({ briefing }: { briefing: BriefingData }) {
   const a = briefing.analysis;
   const riskColor =
-    a.risk_level === "high"   ? "#ef4444" :
-    a.risk_level === "medium" ? "#f59e0b" : "#22c55e";
-  const dirColor = (dir: string) => dir === "LONG" ? "#22c55e" : "#ef4444";
+    a.risk_level === "high"   ? "var(--signal-high)" :
+    a.risk_level === "medium" ? "var(--signal-mid)"  : "var(--signal-low)";
 
   return (
     <div className="flex flex-col gap-3">
-
-      {/* Risk badge row */}
+      {/* Risk + freshness row */}
       <div className="flex items-center justify-between">
-        <p className="text-[9px] text-white/30 font-mono">
-          {briefing.from_cache ? "⌛ cached" : "✦ fresh"} · {briefing.created_at?.slice(0, 10)}
-        </p>
-        <RiskBadge level={a.risk_level} />
+        <span className="font-mono text-[9px]" style={{ color: "var(--geo-text)" }}>
+          {briefing.from_cache ? "cached" : "fresh"} · {briefing.created_at?.slice(0, 10)}
+        </span>
+        <span
+          className="font-mono text-[10px] font-bold px-2.5 py-1 rounded"
+          style={{
+            color: riskColor,
+            background: `${riskColor}12`,
+            border: `1px solid ${riskColor}30`,
+          }}
+        >
+          {a.risk_level.toUpperCase()} RISK
+        </span>
       </div>
 
-      {/* Geopolitical Summary */}
-      <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-        <p className="text-[9px] text-white/40 font-mono uppercase tracking-wider mb-2">
-          🌍 Geopolitical Summary
+      {/* Geopolitical summary */}
+      <div
+        className="rounded-xl px-3.5 py-3"
+        style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}
+      >
+        <p className="font-mono text-[8px] tracking-[0.2em] mb-2" style={{ color: "var(--geo-text)" }}>
+          GEOPOLITICAL SITUATION
         </p>
-        <p className="text-xs text-white/80 leading-relaxed">{a.geopolitical_summary}</p>
+        <p className="font-mono text-[10px] leading-relaxed" style={{ color: "rgba(255,255,255,0.75)" }}>
+          {a.geopolitical_summary}
+        </p>
       </div>
 
-      {/* Market Impact */}
-      <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-        <p className="text-[9px] text-white/40 font-mono uppercase tracking-wider mb-2">
-          📊 Market Impact
+      {/* Market impact */}
+      <div
+        className="rounded-xl px-3.5 py-3"
+        style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}
+      >
+        <p className="font-mono text-[8px] tracking-[0.2em] mb-2" style={{ color: "var(--geo-text)" }}>
+          MARKET IMPACT
         </p>
-        <p className="text-xs text-white/75 leading-relaxed">{a.market_impact}</p>
+        <p className="font-mono text-[10px] leading-relaxed" style={{ color: "rgba(255,255,255,0.65)" }}>
+          {a.market_impact}
+        </p>
       </div>
 
-      {/* Affected Assets */}
-      <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-        <p className="text-[9px] text-white/40 font-mono uppercase tracking-wider mb-2">
-          🎯 Affected Assets
-        </p>
-        <div className="flex flex-wrap gap-1.5">
-          {a.affected_assets.map((asset, i) => (
-            <span
-              key={i}
-              className="text-[10px] font-mono px-2 py-0.5 rounded"
-              style={{
-                background: "rgba(255,255,255,0.07)",
-                color: "rgba(255,255,255,0.7)",
-                border: "1px solid rgba(255,255,255,0.1)",
-              }}
-            >
-              {asset}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* Trade Ideas */}
-      {a.trade_ideas.length > 0 && (
-        <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-          <p className="text-[9px] text-white/40 font-mono uppercase tracking-wider mb-2">
-            💡 Trade Ideas
+      {/* Affected assets */}
+      {a.affected_assets.length > 0 && (
+        <div
+          className="rounded-xl px-3.5 py-3"
+          style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}
+        >
+          <p className="font-mono text-[8px] tracking-[0.2em] mb-2" style={{ color: "var(--geo-text)" }}>
+            AFFECTED ASSETS
           </p>
-          <div className="flex flex-col gap-2.5">
-            {a.trade_ideas.map((idea: TradeIdea, i: number) => (
-              <div key={i} className="flex items-start gap-2">
-                <div className="shrink-0 mt-0.5">
-                  <span
-                    className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded"
-                    style={{
-                      color: dirColor(idea.direction),
-                      background: idea.direction === "LONG"
-                        ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)",
-                      border: `1px solid ${idea.direction === "LONG"
-                        ? "rgba(34,197,94,0.25)" : "rgba(239,68,68,0.25)"}`,
-                    }}
-                  >
-                    {idea.direction === "LONG" ? "↑" : "↓"} {idea.asset}
-                  </span>
-                </div>
-                <p className="text-[10px] text-white/55 leading-relaxed">{idea.reasoning}</p>
-              </div>
+          <div className="flex flex-wrap gap-1.5">
+            {a.affected_assets.map((asset, i) => (
+              <span
+                key={i}
+                className="font-mono text-[9px] px-2 py-0.5 rounded"
+                style={{
+                  color: "rgba(255,255,255,0.65)",
+                  background: "rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                }}
+              >
+                {asset}
+              </span>
             ))}
           </div>
         </div>
       )}
 
-      {/* Analyst note */}
-      <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-        <p className="text-[9px] text-white/40 font-mono uppercase tracking-wider mb-1">Analyst Note</p>
-        <p className="text-[10px] text-white/50 leading-relaxed italic">{a.confidence_note}</p>
-      </div>
+      {/* Trade ideas */}
+      {a.trade_ideas.length > 0 && (
+        <div
+          className="rounded-xl px-3.5 py-3"
+          style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}
+        >
+          <p className="font-mono text-[8px] tracking-[0.2em] mb-2.5" style={{ color: "var(--geo-text)" }}>
+            TRADE IDEAS
+          </p>
+          <div className="flex flex-col gap-2.5">
+            {a.trade_ideas.map((idea: TradeIdea, i: number) => {
+              const c = idea.direction === "LONG" ? "var(--signal-low)" : "var(--signal-high)";
+              return (
+                <div key={i} className="flex items-start gap-2.5">
+                  <span
+                    className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 mt-0.5"
+                    style={{
+                      color: c,
+                      background: `${c}12`,
+                      border: `1px solid ${c}28`,
+                    }}
+                  >
+                    {idea.direction === "LONG" ? "↑" : "↓"} {idea.asset}
+                  </span>
+                  <p className="font-mono text-[9px] leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
+                    {idea.reasoning}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
-      {/* Footer */}
-      <p className="text-[8px] text-white/20 font-mono text-center pb-1">✦ {briefing.model}</p>
+      {/* Analyst note */}
+      <div
+        className="rounded-xl px-3.5 py-3"
+        style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
+      >
+        <p className="font-mono text-[8px] tracking-[0.2em] mb-1" style={{ color: "var(--geo-text)" }}>
+          ANALYST NOTE
+        </p>
+        <p className="font-mono text-[9px] italic leading-relaxed" style={{ color: "rgba(255,255,255,0.4)" }}>
+          {a.confidence_note}
+        </p>
+      </div>
     </div>
   );
 }
 
-// ── Main panel ─────────────────────────────────────────────────────────────
+// ── Main panel ───────────────────────────────────────────────────────────────
 
 interface Props {
   event:   GeoEvent;
   onClose: () => void;
 }
 
-type TabId = "news" | "signals" | "forecast" | "gemini";
+type TabId = "news" | "market" | "forecast" | "brief";
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: "news",     label: "📰 News"    },
-  { id: "signals",  label: "💹 Signals" },
-  { id: "forecast", label: "📈 Forecast"},
-  { id: "gemini",   label: "🤖 AI"      },
+  { id: "news",     label: "NEWS"    },
+  { id: "market",   label: "MARKET"  },
+  { id: "forecast", label: "OUTLOOK" },
+  { id: "brief",    label: "BRIEF"   },
 ];
 
 export default function CountryTradingPanel({ event, onClose }: Props) {
@@ -726,11 +880,9 @@ export default function CountryTradingPanel({ event, onClose }: Props) {
   const [errorForecast,   setErrorForecast]   = useState(false);
   const [errorBriefing,   setErrorBriefing]   = useState(false);
 
-  const tensionColor =
-    event.tension_label === "high"   ? "#ef4444" :
-    event.tension_label === "medium" ? "#f59e0b" : "#22c55e";
+  const tensionColor = T_COLOR(event.tension_label);
+  const tensionPct   = Math.round(event.tension_score * 100);
 
-  // Load trading (news + stocks + prediction) on mount / country change
   useEffect(() => {
     setLoadingTrading(true);
     setTrading(null); setForecast(null); setBriefing(null);
@@ -744,7 +896,6 @@ export default function CountryTradingPanel({ event, onClose }: Props) {
     });
   }, [event.iso]);
 
-  // Lazy-load forecast when Forecast tab opened
   useEffect(() => {
     if (tab !== "forecast" || forecast || loadingForecast) return;
     setLoadingForecast(true);
@@ -756,9 +907,8 @@ export default function CountryTradingPanel({ event, onClose }: Props) {
     });
   }, [tab, event.iso]);
 
-  // Lazy-load Gemini briefing when AI tab opened
   useEffect(() => {
-    if (tab !== "gemini" || briefing || loadingBriefing) return;
+    if (tab !== "brief" || briefing || loadingBriefing) return;
     setLoadingBriefing(true);
     setErrorBriefing(false);
     fetchBriefing(event.iso).then((res) => {
@@ -769,148 +919,187 @@ export default function CountryTradingPanel({ event, onClose }: Props) {
   }, [tab, event.iso]);
 
   const isLoading =
-    (tab === "news" || tab === "signals") ? loadingTrading  :
-    tab === "forecast"                    ? loadingForecast :
+    tab === "news" || tab === "market" ? loadingTrading  :
+    tab === "forecast"                 ? loadingForecast :
     loadingBriefing;
 
   const hasError =
-    (tab === "news" || tab === "signals") ? errorTrading  :
-    tab === "forecast"                    ? errorForecast :
+    tab === "news" || tab === "market" ? errorTrading  :
+    tab === "forecast"                 ? errorForecast :
     errorBriefing;
 
-  // Derive momentum from prediction if available
   const momentum = trading?.prediction?.tension_momentum;
+
+  const eventDesc: Record<string, string> = {
+    conflict:     "armed conflict",
+    military:     "military activity",
+    sanctions:    "economic sanctions",
+    diplomatic:   "diplomatic activity",
+    elections:    "political elections",
+    humanitarian: "humanitarian crisis",
+    trade:        "trade disputes",
+  };
 
   return (
     <div
-      className="fixed right-0 top-0 bottom-0 z-30 flex flex-col"
+      className="fixed right-0 top-0 bottom-0 z-30 flex flex-col panel-slide-in"
       style={{
-        width:          "340px",
-        background:     "rgba(5, 10, 20, 0.92)",
-        backdropFilter: "blur(20px)",
-        borderLeft:     "1px solid rgba(255,255,255,0.07)",
-        animation:      "slideInRight 0.3s ease",
+        width:          "360px",
+        background:     "rgba(4, 9, 20, 0.95)",
+        backdropFilter: "blur(24px)",
+        borderLeft:     "1px solid rgba(15, 32, 64, 0.9)",
       }}
     >
-      <style>{`
-        @keyframes slideInRight {
-          from { transform: translateX(100%); opacity: 0; }
-          to   { transform: translateX(0);    opacity: 1; }
-        }
-      `}</style>
-
-      {/* ── Header ── */}
+      {/* ── Header ───────────────────────────────────────────── */}
       <div
-        className="flex items-center justify-between px-4 py-3 shrink-0"
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
+        className="px-5 pt-4 pb-3 shrink-0"
+        style={{ borderBottom: "1px solid rgba(15, 32, 64, 0.8)" }}
       >
-        <div className="flex items-center gap-2.5">
-          <span
-            className="w-2.5 h-2.5 rounded-full shrink-0"
-            style={{ background: tensionColor, boxShadow: `0 0 8px ${tensionColor}` }}
-          />
-          <div>
-            <p className="font-mono font-bold text-sm text-white leading-none">{event.country}</p>
-            <p className="text-[9px] text-white/40 font-mono tracking-widest uppercase mt-0.5">
-              {event.iso} · {event.tension_label} tension
-            </p>
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Tension indicator dot */}
+            <div className="shrink-0 relative">
+              <div
+                className="w-3 h-3 rounded-full"
+                style={{
+                  background: tensionColor,
+                  boxShadow: `0 0 0 3px ${tensionColor}20, 0 0 10px ${tensionColor}40`,
+                }}
+              />
+            </div>
+            <div className="min-w-0">
+              <h2
+                className="font-bold text-base leading-none truncate"
+                style={{ color: "rgba(255,255,255,0.95)", letterSpacing: "0.04em" }}
+              >
+                {event.country.toUpperCase()}
+              </h2>
+              <p className="font-mono text-[9px] mt-1 tracking-[0.2em]" style={{ color: "var(--geo-text-2)" }}>
+                {event.iso} · {event.tension_label.toUpperCase()} TENSION
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2 shrink-0">
+            {/* Tension score badge */}
+            <div
+              className="font-mono text-[11px] font-bold px-2 py-1 rounded"
+              style={{
+                color: tensionColor,
+                background: `${tensionColor}12`,
+                border: `1px solid ${tensionColor}28`,
+              }}
+            >
+              {tensionPct}
+            </div>
+            <button
+              onClick={onClose}
+              className="font-mono text-[16px] leading-none p-1 rounded transition-colors"
+              style={{ color: "var(--geo-text)", lineHeight: "1" }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.8)")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "var(--geo-text)")}
+            >
+              ✕
+            </button>
           </div>
         </div>
-        <button
-          onClick={onClose}
-          className="text-white/40 hover:text-white text-lg leading-none transition-colors p-1 rounded"
-        >
-          ✕
-        </button>
-      </div>
 
-      {/* ── Tension bar (full width, below header) ── */}
-      <div className="px-4 pt-1.5 pb-2 shrink-0">
-        <div className="flex items-center justify-between mb-0.5">
-          <span className="text-[8px] text-white/25 font-mono">tension</span>
-          <span className="text-[8px] font-mono" style={{ color: tensionColor }}>
-            {Math.round(event.tension_score * 100)}
-          </span>
+        {/* Tension fill bar */}
+        <div className="h-px w-full rounded-full mb-3" style={{ background: "rgba(255,255,255,0.05)" }}>
+          <div
+            className="h-full rounded-full transition-all duration-700"
+            style={{ width: `${tensionPct}%`, background: tensionColor, opacity: 0.7 }}
+          />
         </div>
-        <TensionBar score={event.tension_score} />
+
+        {/* Situation context sentence */}
+        <p className="font-mono text-[10px] leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
+          {event.country} is a{" "}
+          <span style={{ color: tensionColor, fontWeight: 600 }}>
+            {event.tension_label}-risk
+          </span>{" "}
+          situation, mainly driven by{" "}
+          <span style={{ color: "rgba(255,255,255,0.75)" }}>
+            {eventDesc[event.event_label ?? ""] ?? "geopolitical events"}
+          </span>.
+          {trading?.prediction?.direction && trading.prediction.model_source !== "rule-based" && (
+            <>
+              {" "}ML signals{" "}
+              <span style={{ color: trading.prediction.direction === "increase" ? "var(--signal-low)" : trading.prediction.direction === "decrease" ? "var(--signal-high)" : "var(--signal-mid)" }}>
+                {trading.prediction.direction === "increase" ? "price up" : trading.prediction.direction === "decrease" ? "price down" : "uncertain direction"}
+              </span>{" "}
+              over 3 days.
+            </>
+          )}
+        </p>
       </div>
 
-      {/* ── Tabs ── */}
+      {/* ── Tabs ─────────────────────────────────────────────── */}
       <div
         className="flex shrink-0"
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
+        style={{ borderBottom: "1px solid rgba(15, 32, 64, 0.8)" }}
       >
         {TABS.map(({ id, label }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
-            className={`flex-1 py-2.5 text-[9px] font-mono uppercase tracking-wider transition-colors ${
-              tab === id
-                ? "text-white border-b-2"
-                : "text-white/35 hover:text-white/60"
-            }`}
-            style={tab === id ? { borderColor: tensionColor } : {}}
+            className="flex-1 py-3 font-mono text-[9px] tracking-[0.22em] transition-all"
+            style={{
+              color: tab === id ? "rgba(255,255,255,0.9)" : "var(--geo-text)",
+              borderBottom: tab === id ? `2px solid ${tensionColor}` : "2px solid transparent",
+              background: tab === id ? `${tensionColor}06` : "transparent",
+            }}
           >
             {label}
           </button>
         ))}
       </div>
 
-      {/* ── Body ── */}
-      <div className="flex-1 overflow-y-auto p-3 scrollbar-thin">
+      {/* ── Body ─────────────────────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto px-4 py-3.5 scrollbar-thin">
         {isLoading && <Spinner color={tensionColor} />}
 
         {!isLoading && hasError && (
-          <div className="flex flex-col items-center justify-center h-full gap-2 text-white/30">
-            <p className="text-2xl">⚠</p>
-            <p className="text-xs font-mono text-center">
-              {tab === "gemini"
-                ? <>No AI briefing available.<br />Check GEMINI_API_KEY in .env</>
+          <div className="flex flex-col items-center justify-center h-full gap-3">
+            <p className="font-mono text-2xl" style={{ color: "var(--geo-text)" }}>⚠</p>
+            <p className="font-mono text-[10px] text-center leading-relaxed" style={{ color: "var(--geo-text)" }}>
+              {tab === "brief"
+                ? "No AI briefing available.\nCheck GEMINI_API_KEY in .env"
                 : tab === "forecast"
-                ? <>No forecast data for {event.country}.<br />Need ≥ 3 days of signals.</>
-                : <>No data for {event.country}.<br />Start the API to enable this panel.</>
-              }
+                ? `No forecast data for ${event.country}.\nNeed ≥ 3 days of signals.`
+                : `No data for ${event.country}.\nStart the API to enable this panel.`}
             </p>
           </div>
         )}
 
         {!isLoading && !hasError && (
           <>
-            {tab === "news"     && trading  && <NewsTab  news={trading.recent_news} />}
-            {tab === "signals"  && trading  && (
-              <SignalsTab
-                signals={trading.stock_signals}
-                prediction={trading.prediction}
-              />
-            )}
+            {tab === "news"     && trading  && <NewsTab news={trading.recent_news} />}
+            {tab === "market"   && trading  && <MarketTab prediction={trading.prediction} />}
             {tab === "forecast" && forecast && (
               <ForecastSparkline forecast={forecast} momentum={momentum} />
             )}
-            {tab === "gemini"   && briefing && <GeminiBriefingTab briefing={briefing} />}
+            {tab === "brief"    && briefing && <BriefingTab briefing={briefing} />}
           </>
         )}
       </div>
 
-      {/* ── Footer ── */}
-      {trading && (
+      {/* ── Footer (source only, no dev info) ────────────────── */}
+      {trading?.tension?.sample_url && (
         <div
-          className="px-4 py-2 shrink-0 flex items-center justify-between"
-          style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}
+          className="px-5 py-2 shrink-0 flex justify-end"
+          style={{ borderTop: "1px solid rgba(15, 32, 64, 0.6)" }}
         >
-          <p className="text-[9px] text-white/25 font-mono">
-            MongoDB · yfinance{briefing ? " · Gemini" : ""}
-            {trading.prediction?.model_source === "ml" ? " · ML" : ""}
-          </p>
-          {trading.tension.sample_url && (
-            <a
-              href={trading.tension.sample_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[9px] text-white/30 hover:text-white/60 font-mono transition-colors"
-            >
-              SOURCE →
-            </a>
-          )}
+          <a
+            href={trading.tension.sample_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono text-[8px] tracking-[0.15em] transition-colors"
+            style={{ color: "var(--geo-text)" }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "var(--accent)")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "var(--geo-text)")}
+          >
+            SOURCE →
+          </a>
         </div>
       )}
     </div>

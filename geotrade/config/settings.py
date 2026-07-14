@@ -36,11 +36,14 @@ class Settings:
 
     # ── NLP ───────────────────────────────────────────────────
     NLP_BATCH_SIZE:     int = int(os.getenv("NLP_BATCH_SIZE", "8"))
-    EVENT_LABELS:       list = ["conflict", "diplomacy", "sanctions", "elections", "trade"]
+    EVENT_LABELS:       list = ["conflict", "military", "diplomacy", "sanctions", "elections", "trade"]
 
     # ── Tension scoring ───────────────────────────────────────
-    TENSION_ALPHA:      float = float(os.getenv("TENSION_ALPHA", "0.6"))
-    TENSION_BETA:       float = float(os.getenv("TENSION_BETA",  "0.4"))
+    # α · neg_sentiment + β · conflict_gravity + γ · coverage_signal
+    # Weights grounded in Caldara-Iacoviello (2022) and CAMEO/Goldstein literature.
+    TENSION_ALPHA:      float = float(os.getenv("TENSION_ALPHA", "0.50"))
+    TENSION_BETA:       float = float(os.getenv("TENSION_BETA",  "0.35"))
+    TENSION_GAMMA:      float = float(os.getenv("TENSION_GAMMA", "0.15"))
 
     # ── Paths ─────────────────────────────────────────────────
     ROOT_DIR:       Path = _ROOT
@@ -54,6 +57,7 @@ class Settings:
     # ── Forecast / Briefing collections ───────────────────────
     COL_TENSION_FORECASTS: str = "tension_forecasts"
     COL_LLM_BRIEFINGS:     str = "llm_briefings"
+    COL_ML_PREDICTIONS:    str = "ml_predictions"
 
     # ── Forecast settings ─────────────────────────────────────
     FORECAST_HORIZON_DAYS:  int   = 7     # how many days ahead to predict
@@ -83,7 +87,7 @@ def print_config():
   Days back     : {settings.INGESTION_DAYS_BACK}
   Max articles  : {settings.MAX_ARTICLES}
   NLP batch     : {settings.NLP_BATCH_SIZE}
-  Tension α/β   : {settings.TENSION_ALPHA} / {settings.TENSION_BETA}
+  Tension α/β/γ : {settings.TENSION_ALPHA} / {settings.TENSION_BETA} / {settings.TENSION_GAMMA}
   Forecast      : {settings.FORECAST_HORIZON_DAYS}d ahead, {settings.FORECAST_HISTORY_DAYS}d history
   API           : {settings.API_HOST}:{settings.API_PORT}
   ───────────────────────────────────""")

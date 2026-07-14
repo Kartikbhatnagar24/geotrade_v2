@@ -112,23 +112,8 @@ def get_briefing(country_iso: str):
     iso = country_iso.upper()
     db  = get_db()
 
-    # ── 1. Try cache ──────────────────────────────────────────
-    cached = db[settings.COL_LLM_BRIEFINGS].find_one(
-        {"iso": iso}, sort=[("created_at", -1)]
-    )
-    if cached and _is_fresh(cached):
-        cached.pop("_id", None)
-        cached["from_cache"] = True
-        return cached
-
-    # ── 2. Check API key ──────────────────────────────────────
-    if not settings.GEMINI_API_KEY:
-        raise HTTPException(
-            status_code=503,
-            detail="GEMINI_API_KEY is not configured. Add it to .env to enable AI briefings.",
-        )
-
-    # ── 3. Fetch context from DB ──────────────────────────────
+    # Look up the current latest tension snapshot first — we need it both for
+    # cache validation and (on a miss) for the prompt context.
     tension_doc = db[settings.COL_DAILY_SIGNALS].find_one(
         {"iso": iso}, sort=[("date", -1)]
     )
@@ -136,6 +121,28 @@ def get_briefing(country_iso: str):
         raise HTTPException(
             status_code=404,
             detail=f"No tension data for '{iso}'. Run pipeline steps 1-3 first.",
+        )
+    latest_date = tension_doc.get("date", "")
+
+    # ── 1. Try cache ──────────────────────────────────────────
+    # A cached briefing is only valid if it is (a) within the TTL AND (b) was
+    # built off the same tension snapshot date. Otherwise the analysis is
+    # describing yesterday's situation in today's voice.
+    cached = db[settings.COL_LLM_BRIEFINGS].find_one(
+        {"iso": iso}, sort=[("created_at", -1)]
+    )
+    if cached and _is_fresh(cached):
+        cached_date = (cached.get("tension_snapshot") or {}).get("date", "")
+        if cached_date == latest_date:
+            cached.pop("_id", None)
+            cached["from_cache"] = True
+            return cached
+
+    # ── 2. Check API key ──────────────────────────────────────
+    if not settings.GEMINI_API_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="GEMINI_API_KEY is not configured. Add it to .env to enable AI briefings.",
         )
 
     news_docs = list(

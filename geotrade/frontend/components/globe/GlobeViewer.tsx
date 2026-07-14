@@ -16,16 +16,12 @@ interface Props {
   onClick: (event: GeoEvent) => void;
 }
 
-// ── Distinct active country color palette ─────────────────────
-const ACTIVE_COLORS = [
-  "#1d4ed8", "#0891b2", "#7c3aed", "#be185d",
-  "#d97706", "#059669", "#dc2626", "#0369a1",
-  "#7e22ce", "#0f766e",
-];
-
-function getActiveColor(name: string, alpha = "CC"): string {
-  return ACTIVE_COLORS[name.length % ACTIVE_COLORS.length] + alpha;
-}
+// ── Tension-based country colors ──────────────────────────────
+const TENSION_CAP_COLOR: Record<string, string> = {
+  high:   "#dc2626EE",
+  medium: "#d97706EE",
+  low:    "#22c55eEE",
+};
 
 // ── Star data ─────────────────────────────────────────────────
 const NUM_STARS = 900;
@@ -140,7 +136,7 @@ export default function GlobeViewer({ events, filter, onHover, onClick }: Props)
           const iso2 = (feat.properties.ISO_A2 || "").toUpperCase();
           const isActive = activeIsos.has(iso2) || activeIsos.has((feat.properties.ISO_A3 || "").toUpperCase());
           if (!isActive) return "rgba(18, 32, 56, 0.75)"; // dark navy for non-active
-          return getActiveColor(feat.properties.NAME || iso2, "EE");
+          return TENSION_CAP_COLOR[ev!.tension_label] ?? "#22c55eEE";
         })
         .polygonSideColor((feat: any) => {
           const iso2 = (feat.properties.ISO_A2 || "").toUpperCase();
